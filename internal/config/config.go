@@ -9,6 +9,13 @@ import (
 type Config struct {
 	Server   SeverConfig
 	Database DatabaseConfig
+	JWT      JWTConfig
+}
+
+type JWTConfig struct {
+	Secret                 string `mapstructure:"JWT_SECRET"`
+	ExpiryMinutes          int    `mapstructure:"JWT_EXPIRY_MINUTES"`
+	RefreshTokenExpiryDays int    `mapstructure:"JWT_TOKEN_EXPIRY_DAYS"`
 }
 
 type SeverConfig struct {
@@ -54,8 +61,13 @@ func Load() (*Config, error) {
 			MaxIdleConnection:     viper.GetInt("DB_MAX_IDLE_CONNECTION"),
 			MaxConnectionLifeTime: viper.GetInt("DB_MAX_CONNECTION_LIFE_TIME"),
 		},
+		JWT: JWTConfig{
+			Secret:                 viper.GetString("JWT_SECRET"),
+			ExpiryMinutes:          viper.GetInt("JWT_EXPIRY_MINUTES"),
+			RefreshTokenExpiryDays: viper.GetInt("JWT_REFRESH_TOKEN_EXPIRY_DAYS"),
+		},
 	}
-	cfg = setDefaultConfigs(cfg)
+	setDefaultConfigs(cfg)
 	err := validateConfigs(cfg)
 	if err != nil {
 		return nil, err
@@ -64,7 +76,7 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-func setDefaultConfigs(cfg *Config) *Config {
+func setDefaultConfigs(cfg *Config) {
 	if cfg.Server.Env == "" {
 		cfg.Server.Env = "development"
 	}
@@ -96,7 +108,13 @@ func setDefaultConfigs(cfg *Config) *Config {
 	if cfg.Database.MaxConnectionLifeTime == 0 {
 		cfg.Database.MaxConnectionLifeTime = 1
 	}
-	return cfg
+	if cfg.JWT.ExpiryMinutes == 0 {
+		cfg.JWT.ExpiryMinutes = 15
+	}
+	if cfg.JWT.RefreshTokenExpiryDays < 1 {
+		cfg.JWT.RefreshTokenExpiryDays = 14
+	}
+
 }
 
 func validateConfigs(cfg *Config) error {
@@ -115,6 +133,9 @@ func validateConfigs(cfg *Config) error {
 
 	if cfg.Database.User == "" {
 		return fmt.Errorf("DB_USER is required")
+	}
+	if cfg.JWT.Secret == "" {
+		return fmt.Errorf("JWT_SECRET is required")
 	}
 	return nil
 }
