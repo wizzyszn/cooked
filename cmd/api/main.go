@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wizzyszn/cooked/internal/app"
 	"github.com/wizzyszn/cooked/internal/config"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/logger"
@@ -26,7 +27,7 @@ func main() {
 	defer zapLogger.Sync()
 
 	zapLogger.Info("Connecting to Database....")
-	_, err = db.Connect(&cfg.Database, cfg.Server.Env)
+	database, err := db.Connect(&cfg.Database, cfg.Server.Env)
 	if err != nil {
 		zapLogger.Fatalw("Failed to connect to database.", "error", err)
 	}
@@ -37,8 +38,8 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	r := router.Init(zapLogger)
+	deps := app.NewDependencies(cfg, database, zapLogger)
+	r := router.Init(deps)
 
 	srv := http.Server{
 		Addr:         ":" + cfg.Server.Port,
@@ -66,6 +67,9 @@ func main() {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		zapLogger.Errorw("server forced to shutdown", "error", err)
+	}
+	if deps.Notifier != nil {
+		deps.Notifier.Stop()
 	}
 
 	zapLogger.Info("Server exited.")

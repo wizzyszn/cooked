@@ -3,16 +3,33 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/wizzyszn/cooked/internal/api/middlewares"
-	"go.uber.org/zap"
+	"github.com/wizzyszn/cooked/internal/app"
+	"github.com/wizzyszn/cooked/internal/auth"
 )
 
-func Init(zapLogger *zap.SugaredLogger) *gin.Engine {
-
+func Init(deps *app.Dependencies) *gin.Engine {
 	r := gin.New()
+	var proxies []string
+	if deps != nil && deps.Config != nil {
+		proxies = deps.Config.Server.TrustedProxies
+	}
+	if err := r.SetTrustedProxies(proxies); err != nil {
+		if deps != nil && deps.Logger != nil {
+			deps.Logger.Warnw("invalid TRUSTED_PROXIES; trusting no proxies", "error", err)
+		}
+		_ = r.SetTrustedProxies(nil)
+	}
 	r.Use(gin.Recovery())
-	r.Use(middlewares.RequestLogger(zapLogger))
-	versioned := r.Group("/api/v1")
-	versioned.GET("hello")
+	r.Use(middlewares.RequestLogger(deps.Logger))
+	r.Use(middlewares.NewRateLimiter(100).Limit)
+
+	v1 := r.Group("/api/v1")
+	authG := v1.Group("/auth")
+	authHandler := auth.NewAuthHandler(deps.AuthService)
+
+	authG.POST("/register", authHandler.Register)
+	authG.GET("/verify-email", authHandler.VerifyEmail)
+	authG.POST("/login", middlewares.NewRateLimiter(5).Limit, authHandler.Login)
 
 	return r
 }
