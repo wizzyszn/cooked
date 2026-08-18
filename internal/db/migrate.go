@@ -3,12 +3,12 @@ package db
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
-
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"gorm.io/gorm"
 )
 
@@ -16,14 +16,9 @@ import (
 var migrationsFS embed.FS
 
 func Migrate(database *gorm.DB) error {
-	m, err := newMigrator(database)
-	if err != nil {
-		return err
-	}
-	if err := m.Up(); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
-	}
-	return nil
+	return apply(database, "run migrations", func(m *migrate.Migrate) error {
+		return m.Up()
+	})
 }
 
 func newMigrator(database *gorm.DB) (*migrate.Migrate, error) {
@@ -32,19 +27,19 @@ func newMigrator(database *gorm.DB) (*migrate.Migrate, error) {
 		return nil, fmt.Errorf("get underlying sqlDB: %w", err)
 	}
 
-	ensurePgcrypto(sqlDB)
+	if err := ensurePgcrypto(sqlDB); err != nil {
+		return nil, fmt.Errorf("ensure pgcrypto: %w", err)
+	}
 
 	src, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
 		return nil, fmt.Errorf("init migration source: %w", err)
 	}
 	driver, err := postgres.WithInstance(sqlDB, &postgres.Config{})
-
 	if err != nil {
 		return nil, fmt.Errorf("init postgres driver: %w", err)
 	}
 	m, err := migrate.NewWithInstance("iofs", src, "postgres", driver)
-
 	if err != nil {
 		return nil, fmt.Errorf("init migrate: %w", err)
 	}
@@ -52,40 +47,55 @@ func newMigrator(database *gorm.DB) (*migrate.Migrate, error) {
 	return m, nil
 }
 
-func MigrateUp(database *gorm.DB) error {
-	err := Migrate(database)
+func apply(database *gorm.DB, op string, fn func(*migrate.Migrate) error) error {
+	m, err := newMigrator(database)
 	if err != nil {
 		return err
 	}
+	if err := fn(m); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("%s: %w", op, err)
+	}
 	return nil
+}
 
+func MigrateUp(database *gorm.DB) error {
+	return Migrate(database)
 }
 
 func MigrateDown(database *gorm.DB) error {
-	m, err := newMigrator(database)
+	return apply(database, "migrate down", func(m *migrate.Migrate) error {
+		return m.Down()
+	})
+}
 
-	if err != nil {
-		return err
-	}
-
-	err = m.Down()
-	if err != nil {
-		return fmt.Errorf("migrate down: %w", err)
-	}
-	return nil
+func MigrateSteps(database *gorm.DB, n int) error {
+	return apply(database, fmt.Sprintf("migrate steps %d", n), func(m *migrate.Migrate) error {
+		return m.Steps(n)
+	})
 }
 
 func MigrateToVersion(database *gorm.DB, version uint) error {
+	return apply(database, fmt.Sprintf("migrate to version %d", version), func(m *migrate.Migrate) error {
+		return m.Migrate(version)
+	})
+}
+
+func ForceVersion(database *gorm.DB, version int) error {
+	return apply(database, fmt.Sprintf("force version %d", version), func(m *migrate.Migrate) error {
+		return m.Force(version)
+	})
+}
+
+func CurrentVersion(database *gorm.DB) (uint, bool, error) {
 	m, err := newMigrator(database)
 	if err != nil {
-		return nil
+		return 0, false, err
 	}
-
-	 err = m.Migrate(version)
-	 if err != nil {
-		return fmt.Errorf("migrate to version %d: %w",version,err)
-	 }
-	return nil
+	version, dirty, err := m.Version()
+	if err != nil {
+		return 0, dirty, fmt.Errorf("get migration version: %w", err)
+	}
+	return version, dirty, nil
 }
 
 func ensurePgcrypto(db *sql.DB) error {
