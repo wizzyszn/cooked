@@ -1,17 +1,19 @@
 package models
 
 import (
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wizzyszn/cooked/pkg/errors"
+	apperrors "github.com/wizzyszn/cooked/pkg/errors"
 )
 
 type APIResponse struct {
-	Status string           `json:"status"`
-	Meta   *APIMeta         `json:"meta,omitempty"`
-	Data   interface{}      `json:"data,omitempty"`
-	Error  *errors.AppError `json:"error,omitempty"`
+	Status string              `json:"status"`
+	Meta   *APIMeta            `json:"meta,omitempty"`
+	Data   interface{}         `json:"data,omitempty"`
+	Error  *apperrors.AppError `json:"error,omitempty"`
 }
 
 type APIMeta struct {
@@ -44,7 +46,7 @@ func ErrorResponse(c *gin.Context, code, message string, httpStatus int) *APIRes
 	return &APIResponse{
 		Status: "error",
 		Meta:   newMeta(c),
-		Error:  errors.New(code, message, httpStatus),
+		Error:  apperrors.New(code, message, httpStatus),
 	}
 }
 
@@ -52,10 +54,27 @@ func ErrorResponseWithDetails(c *gin.Context, message, code string, details inte
 	return &APIResponse{
 		Status: "error",
 		Meta:   newMeta(c),
-		Error: &errors.AppError{
+		Error: &apperrors.AppError{
 			Details: details,
 			Message: message,
 			Code:    code,
 		},
 	}
+}
+
+func WriteAppError(c *gin.Context, err error) {
+	var appError *apperrors.AppError
+	if errors.As(err, &appError) {
+		c.JSON(appError.HTTPStatus, ErrorResponse(c, appError.Code, appError.Message, appError.HTTPStatus))
+		return
+	}
+	c.JSON(http.StatusInternalServerError, ErrorResponse(c, apperrors.ErrInternalServerError.Code, apperrors.ErrInternalServerError.Message, apperrors.ErrInternalServerError.HTTPStatus))
+
+}
+func WriteOk(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusOK, SuccessResponse(c, data))
+}
+
+func WriteCreated(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusCreated, SuccessResponse(c, data))
 }
