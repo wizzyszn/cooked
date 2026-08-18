@@ -50,6 +50,8 @@ func (rl *RateLimter) cleanUp() {
 }
 
 func (rl *RateLimter) allow(ip string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
 	entry, exists := rl.visitors[ip]
 	if !exists {
 		rl.visitors[ip] = &IpEntry{
@@ -75,12 +77,10 @@ func (rl *RateLimter) allow(ip string) bool {
 
 	return true
 }
-func (rl *RateLimter) Limit() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		ip := ctx.ClientIP()
-		if !rl.allow(ip) {
-			ctx.AbortWithStatusJSON(http.StatusTooManyRequests, models.ErrorResponse(ctx, "TOO_MANY_REQUEST", "Too many requests please try again later", http.StatusTooManyRequests))
-		}
-
+func (rl *RateLimter) Limit(ctx *gin.Context) {
+	ip := ctx.ClientIP()
+	if !rl.allow(ip) {
+		ctx.AbortWithStatusJSON(http.StatusTooManyRequests, models.ErrorResponse(ctx, "TOO_MANY_REQUEST", "Too many requests please try again later", http.StatusTooManyRequests))
+		return
 	}
 }
