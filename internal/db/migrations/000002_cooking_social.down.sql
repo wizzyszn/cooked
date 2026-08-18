@@ -16,3 +16,11 @@ DROP INDEX IF EXISTS idx_recipes_public_rating;
 ALTER TABLE recipes
     DROP COLUMN IF EXISTS avg_rating,
     DROP COLUMN IF EXISTS rating_count;
+
+DROP TABLE IF EXISTS refresh_tokens CASCADE;
+
+DROP INDEX IF EXISTS idx_users_user_name_lower;
+
+ALTER TABLE users
+    DROP COLUMN IF EXISTS user_name,
+    DROP COLUMN IF EXISTS hash_pass;
