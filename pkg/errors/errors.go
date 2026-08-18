@@ -3,13 +3,16 @@ package errors
 import (
 	"fmt"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 type AppError struct {
 	Code       string      `json:"code"`
 	Message    string      `json:"message"`
 	HTTPStatus int         `json:"-"`
-	Details    interface{} `json:"details;omitempty"`
+	Details    interface{} `json:"details,omitempty"`
+	cause      error       `json:"-"`
 }
 
 func New(code, message string, httpStatus int) *AppError {
@@ -24,12 +27,16 @@ func (e *AppError) Error() string {
 	return e.Message
 }
 
-func (e *AppError) Wrap(err error, code string, httpStatus int) *AppError {
+func (e *AppError) Unwrap() error {
+	return e.cause
+}
 
+func (e *AppError) Wrap(err error, code string, httpStatus int) *AppError {
 	return &AppError{
 		Code:       code,
-		Message:    err.Error(),
+		Message:    e.Message,
 		HTTPStatus: httpStatus,
+		cause:      err,
 	}
 }
 
@@ -49,16 +56,28 @@ func WithDetails(baseError *AppError, details interface{}) *AppError {
 		Details:    details,
 	}
 }
+func Internal(log *zap.SugaredLogger, msg string, err error, keysAndValues ...interface{}) error {
+	if log != nil {
+		args := append([]interface{}{"error", err}, keysAndValues...)
+		log.Errorw(msg, args...)
+	}
+	return ErrInternalServerError
+}
 
 var (
-	ErrNotFound            = New("NOT_FOUND", "Resource not found", http.StatusNotFound)
-	ErrValidation          = New("VALIDATION_ERROR", "Invalid input", http.StatusBadRequest)
-	ErrTooManyRequests     = New("TOO_MANY_REQUESTS", "Too many requests, please try again later", http.StatusTooManyRequests)
-	ErrUnAuthorized        = New("UNAUTHORIZED", "Authentication required", http.StatusUnauthorized)
-	ErrForbidden           = New("FORBIDDEN", "Insufficient permissions", http.StatusForbidden)
-	ErrTokenExpired        = New("TOKEN_EXPIRED", "Authentication token has expired", http.StatusUnauthorized)
-	ErrInvalidToken        = New("INVALID_TOKEN", "Authentication token is invalid", http.StatusUnauthorized)
-	ErrBadRequest          = New("BAD_REQUEST", "Bad request", http.StatusBadRequest)
-	ErrServiceUnavailable  = New("SERVICE_UNAVAILABLE", "Service is unavailable at the moment", http.StatusServiceUnavailable)
-	ErrInternalServerError = New("INTERNAL_SERVER_ERROR", "An internal server error occured", http.StatusInternalServerError)
+	ErrNotFound               = New("NOT_FOUND", "Resource not found", http.StatusNotFound)
+	ErrValidation             = New("VALIDATION_ERROR", "Invalid input", http.StatusBadRequest)
+	ErrTooManyRequests        = New("TOO_MANY_REQUESTS", "Too many requests, please try again later", http.StatusTooManyRequests)
+	ErrUnAuthorized           = New("UNAUTHORIZED", "Authentication required", http.StatusUnauthorized)
+	ErrForbidden              = New("FORBIDDEN", "Insufficient permissions", http.StatusForbidden)
+	ErrTokenExpired           = New("TOKEN_EXPIRED", "Authentication token has expired", http.StatusUnauthorized)
+	ErrInvalidToken           = New("INVALID_TOKEN", "Authentication token is invalid", http.StatusUnauthorized)
+	ErrBadRequest             = New("BAD_REQUEST", "Bad request", http.StatusBadRequest)
+	ErrServiceUnavailable     = New("SERVICE_UNAVAILABLE", "Service is unavailable at the moment", http.StatusServiceUnavailable)
+	ErrInternalServerError    = New("INTERNAL_SERVER_ERROR", "An internal server error occured", http.StatusInternalServerError)
+	ErrConflict               = New("CONFLICT_ERROR", "Conflict error", http.StatusConflict)
+	ErrEmailTaken             = New("EMAIL_TAKEN", "an account with this email already exists", http.StatusConflict)
+	ErrUsernameTaken          = New("USERNAME_TAKEN", "this username is already taken", http.StatusConflict)
+	ErrInvalidEmailOrPassword = New("INVALID_EMAIL_OR_PASSWORD", "Invalid email or password! Please try again later", ErrBadRequest.HTTPStatus)
+	ErrEmailNotVerified       = New("EMAIL_NOT_VERIFIED", "Please confirm your email before signing in", http.StatusForbidden)
 )
