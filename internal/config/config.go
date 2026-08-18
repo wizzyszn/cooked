@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -10,20 +11,29 @@ type Config struct {
 	Server   SeverConfig
 	Database DatabaseConfig
 	JWT      JWTConfig
+	Brevo    BrevoConfig
+	App      AppConfig
+}
+
+type AppConfig struct {
+	PublicURL string
 }
 
 type JWTConfig struct {
-	Secret                 string `mapstructure:"JWT_SECRET"`
-	ExpiryMinutes          int    `mapstructure:"JWT_EXPIRY_MINUTES"`
-	RefreshTokenExpiryDays int    `mapstructure:"JWT_TOKEN_EXPIRY_DAYS"`
+	AccessSecret        string `mapstructure:"JWT_ACCESS_SECRET"`
+	RefreshSecret       string `mapstructure:"JWT_REFRESH_SECRET"`
+	AccessTTLMin        int    `mapstructure:"access_ttl"`
+	RefreshTLLDay       int    `mapstructure:"refresh_ttl"`
+	EmailVerifyTTLHours int    `mapstructure:"email_verify_ttl"`
 }
 
 type SeverConfig struct {
-	Env          string `mapstructure:"ENV"`
-	Port         string `mapstructure:"PORT"`
-	ReadTimeOut  int    `mapstructure:"READ_TIME_OUT"`
-	IdleTimeOut  int    `mapstructure:"IDLE_TIME_OUT"`
-	WriteTimeOut int    `mapstructure:"WRITE_TIME_OUT"`
+	Env            string   `mapstructure:"ENV"`
+	Port           string   `mapstructure:"PORT"`
+	ReadTimeOut    int      `mapstructure:"READ_TIME_OUT"`
+	IdleTimeOut    int      `mapstructure:"IDLE_TIME_OUT"`
+	WriteTimeOut   int      `mapstructure:"WRITE_TIME_OUT"`
+	TrustedProxies []string `mapstructure:"TRUSTED_PROXIES"`
 }
 
 type DatabaseConfig struct {
@@ -38,17 +48,25 @@ type DatabaseConfig struct {
 	MaxConnectionLifeTime int    `mapstructure:"DB_MAX_CONNECTION_LIFE_TIME"`
 }
 
+type BrevoConfig struct {
+	SenderEmail string `mapstructure:"BREVO_SENDER_EMAIL"`
+	SenderName  string `mapstructure:"BREVO_SENDER_NAME"`
+	APIKey      string `mapstructure:"BREVO_API_KEY"`
+	BaseUrl     string `mapstructure:"BREVO_BASE_URL"`
+}
+
 func Load() (*Config, error) {
 	viper.SetConfigFile(".env")
 	viper.AutomaticEnv()
 	_ = viper.ReadInConfig()
 	cfg := &Config{
 		Server: SeverConfig{
-			Env:          viper.GetString("ENV"),
-			Port:         viper.GetString("PORT"),
-			IdleTimeOut:  viper.GetInt("IDLE_TIME_OUT"),
-			WriteTimeOut: viper.GetInt("WRITE_TIME_OUT"),
-			ReadTimeOut:  viper.GetInt("READ_TIME_OUT"),
+			Env:            viper.GetString("ENV"),
+			Port:           viper.GetString("PORT"),
+			IdleTimeOut:    viper.GetInt("IDLE_TIME_OUT"),
+			WriteTimeOut:   viper.GetInt("WRITE_TIME_OUT"),
+			ReadTimeOut:    viper.GetInt("READ_TIME_OUT"),
+			TrustedProxies: splitCSV(viper.GetString("TRUSTED_PROXIES")),
 		},
 		Database: DatabaseConfig{
 			Host:                  viper.GetString("DB_HOST"),
@@ -62,9 +80,20 @@ func Load() (*Config, error) {
 			MaxConnectionLifeTime: viper.GetInt("DB_MAX_CONNECTION_LIFE_TIME"),
 		},
 		JWT: JWTConfig{
-			Secret:                 viper.GetString("JWT_SECRET"),
-			ExpiryMinutes:          viper.GetInt("JWT_EXPIRY_MINUTES"),
-			RefreshTokenExpiryDays: viper.GetInt("JWT_REFRESH_TOKEN_EXPIRY_DAYS"),
+			AccessSecret:        firstNonEmpty(viper.GetString("JWT_ACCESS_SECRET"), viper.GetString("JWT_SECRET")),
+			RefreshSecret:       firstNonEmpty(viper.GetString("JWT_REFRESH_SECRET"), viper.GetString("JWT_SECRET")),
+			AccessTTLMin:        firstNonZero(viper.GetInt("JWT_ACCESS_TTL"), viper.GetInt("JWT_EXPIRY_MINUTES")),
+			RefreshTLLDay:       firstNonZero(viper.GetInt("JWT_REFRESH_TTL"), viper.GetInt("JWT_REFRESH_TOKEN_EXPIRY_DAYS")),
+			EmailVerifyTTLHours: viper.GetInt("JWT_EMAIL_VERIFY_TTL"),
+		},
+		Brevo: BrevoConfig{
+			SenderEmail: viper.GetString("BREVO_SENDER_EMAIL"),
+			SenderName:  viper.GetString("BREVO_SENDER_NAME"),
+			APIKey:      viper.GetString("BREVO_API_KEY"),
+			BaseUrl:     viper.GetString("BREVO_BASE_URL"),
+		},
+		App: AppConfig{
+			PublicURL: viper.GetString("APP_PUBLIC_URL"),
 		},
 	}
 	setDefaultConfigs(cfg)
@@ -108,11 +137,17 @@ func setDefaultConfigs(cfg *Config) {
 	if cfg.Database.MaxConnectionLifeTime == 0 {
 		cfg.Database.MaxConnectionLifeTime = 1
 	}
-	if cfg.JWT.ExpiryMinutes == 0 {
-		cfg.JWT.ExpiryMinutes = 15
+	if cfg.JWT.AccessTTLMin == 0 {
+		cfg.JWT.AccessTTLMin = 15
 	}
-	if cfg.JWT.RefreshTokenExpiryDays < 1 {
-		cfg.JWT.RefreshTokenExpiryDays = 14
+	if cfg.JWT.RefreshTLLDay == 0 {
+		cfg.JWT.RefreshTLLDay = 14
+	}
+	if cfg.JWT.EmailVerifyTTLHours == 0 {
+		cfg.JWT.EmailVerifyTTLHours = 24
+	}
+	if cfg.App.PublicURL == "" {
+		cfg.App.PublicURL = "http://localhost:" + cfg.Server.Port
 	}
 
 }
@@ -134,10 +169,50 @@ func validateConfigs(cfg *Config) error {
 	if cfg.Database.User == "" {
 		return fmt.Errorf("DB_USER is required")
 	}
-	if cfg.JWT.Secret == "" {
-		return fmt.Errorf("JWT_SECRET is required")
+	if cfg.JWT.AccessSecret == "" {
+		return fmt.Errorf("JWT_ACCESS_SECRET is required")
+	}
+	if cfg.JWT.RefreshSecret == "" {
+		return fmt.Errorf("JWT_REFRESH_SECRET is required")
 	}
 	return nil
+}
+
+func (b BrevoConfig) Enabled() bool {
+	return b.APIKey != "" && b.BaseUrl != "" && b.SenderEmail != "" && b.SenderName != ""
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func firstNonZero(vals ...int) int {
+	for _, v := range vals {
+		if v != 0 {
+			return v
+		}
+	}
+	return 0
+}
+
+func splitCSV(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func (d *DatabaseConfig) DSN() string {
