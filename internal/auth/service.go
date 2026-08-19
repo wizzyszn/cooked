@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wizzyszn/cooked/internal/domain"
 	"github.com/wizzyszn/cooked/internal/notify"
 	"github.com/wizzyszn/cooked/internal/user"
@@ -185,6 +187,7 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 	if err := s.authRepo.CreateRefreshToken(ctx, &domain.RefreshToken{
 		UserID:    account.ID,
 		TokenHash: HashRefreshToken(refreshToken),
+		FamilyID:  uuid.New(),
 		ExpiresAt: refreshExp,
 		RevokedAt: nil,
 		CreatedAt: time.Now().UTC(),
@@ -199,5 +202,75 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 			RefreshToken:      refreshToken,
 			AccessTokenExpiry: accessExp,
 		},
+	}, nil
+}
+
+func (s *AuthService) Refresh(ctx context.Context, req *RefreshRequest) (*RefreshResponse, error) {
+	hashedRefreshToken := HashRefreshToken(req.RefreshToken)
+	row, err := s.authRepo.FindRefreshTokenByHash(ctx, hashedRefreshToken)
+	if err != nil {
+		return nil, errors.Internal(s.log, "get refresh token", err)
+	}
+	if row == nil {
+		return nil, errors.ErrInvalidToken
+	}
+	if row.RevokedAt != nil {
+		n, err := s.authRepo.RevokeFamily(ctx, row.FamilyID)
+		if err != nil {
+			return nil, errors.Internal(s.log, "revoke token family", err, "user_id", row.UserID, "family_id", row.FamilyID)
+		}
+		if s.log != nil {
+			s.log.Infow("refresh token reuse detected - family revoked", "user_id", row.UserID, "family_id", row.FamilyID, "revoked", n)
+		}
+		return nil, errors.ErrInvalidToken
+	}
+	if row.ExpiresAt.Before(time.Now()) {
+		if err := s.authRepo.Revoke(ctx, row.ID); err != nil {
+			return nil, errors.Internal(s.log, "revoke expired refresh token", err, "user_id", row.UserID)
+		}
+		return nil, errors.ErrInvalidToken
+	}
+
+	account, err := s.users.FindByID(ctx, row.UserID)
+	if err != nil {
+		return nil, errors.Internal(s.log, "account lookup by id", err, "user_id", row.UserID)
+	}
+	if account == nil {
+		return nil, errors.ErrInvalidToken
+	}
+
+	newRefreshToken, newRefreshTokenExp, err := s.tokens.IssueRefreshToken(account.ID, account.Email, account.IsVerified)
+	if err != nil {
+		return nil, errors.Internal(s.log, "issue fresh refresh token", err, "user_id", account.ID)
+	}
+	newAccessToken, _, err := s.tokens.IssueAccessToken(account.ID, account.Email, account.IsVerified)
+	if err != nil {
+		return nil, errors.Internal(s.log, "issue access token", err, "user_id", account.ID)
+	}
+
+	newRow := &domain.RefreshToken{
+		UserID:    account.ID,
+		TokenHash: HashRefreshToken(newRefreshToken),
+		FamilyID:  row.FamilyID,
+		ParentID:  &row.ID,
+		ExpiresAt: newRefreshTokenExp,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := s.authRepo.RotateRefreshToken(ctx, row.ID, newRow); err != nil {
+		if stderrors.Is(err, errRefreshReuse) {
+			if s.log != nil {
+				s.log.Infow("refresh token reuse detected - family revoked", "user_id", row.UserID, "family_id", row.FamilyID)
+			}
+			return nil, errors.ErrInvalidToken
+		}
+		if stderrors.Is(err, errRefreshExpired) || stderrors.Is(err, errRefreshNotFound) {
+			return nil, errors.ErrInvalidToken
+		}
+		return nil, errors.Internal(s.log, "rotate refresh token", err, "user_id", account.ID)
+	}
+
+	return &RefreshResponse{
+		AccessToken:  newAccessToken,
+		RefreshToken: newRefreshToken,
 	}, nil
 }
