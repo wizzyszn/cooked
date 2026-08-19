@@ -30,6 +30,6 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	authG.POST("/register", authHandler.Register)
 	authG.GET("/verify-email", authHandler.VerifyEmail)
 	authG.POST("/login", middlewares.NewRateLimiter(5).Limit, authHandler.Login)
-
+	authG.POST("/refresh", authHandler.Refresh)
 	return r
 }

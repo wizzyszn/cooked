@@ -57,3 +57,17 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	}
 	models.WriteOk(ctx, res)
 }
+
+func (h *AuthHandler) Refresh(ctx *gin.Context) {
+	var req RefreshRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		models.WriteAppError(ctx, errors.ErrValidation)
+		return
+	}
+	res, err := h.service.Refresh(ctx.Request.Context(), &req)
+	if err != nil {
+		models.WriteAppError(ctx, err)
+		return
+	}
+	models.WriteOk(ctx, res)
+}

@@ -28,3 +28,12 @@ type LoginResponse struct {
 	User   *domain.SanitizedUser `json:"user"`
 	Tokens *TokenPair            `json:"tokens"`
 }
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required,min=32"`
+}
+
+type RefreshResponse struct {
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+}
