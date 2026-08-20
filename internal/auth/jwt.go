@@ -149,3 +149,25 @@ func (m *JWTManager) IssueRefreshToken(userId uuid.UUID, email string, emailVeri
 	}
 	return signedToken, exp, nil
 }
+
+func (m *JWTManager) Parse(raw string) (*AccessClaims, error) {
+	token, err := jwt.ParseWithClaims(raw, &AccessClaims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, apperrors.ErrInvalidToken
+		}
+		return m.accessKey(), nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, apperrors.ErrTokenExpired
+		}
+		return nil, apperrors.ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*AccessClaims)
+	if !ok || !token.Valid {
+		return nil, apperrors.ErrInvalidToken
+	}
+	return claims, nil
+}

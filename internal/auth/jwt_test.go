@@ -57,3 +57,26 @@ func TestIssueRefreshTokenAreUnique(t *testing.T) {
 		t.Fatal("refresh tokens minted in the same second must differ")
 	}
 }
+
+func TestAccessTokenRoundTrip(t *testing.T) {
+	m := testManager(t)
+	userID := uuid.New()
+	token, _, err := m.IssueAccessToken(userID, "ada@example.com", true)
+	if err != nil {
+		t.Fatalf("issue: %v", err)
+	}
+	claims, err := m.Parse(token)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if claims.UserID != userID.String() || claims.Email != "ada@example.com" || !claims.EmailVerified {
+		t.Fatalf("got %+v", claims)
+	}
+}
+
+func TestAccessTokenRejectsGarbage(t *testing.T) {
+	m := testManager(t)
+	if _, err := m.Parse("not-a-token"); err != apperrors.ErrInvalidToken {
+		t.Fatalf("expected invalid token, got %v", err)
+	}
+}
