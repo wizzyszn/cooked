@@ -65,10 +65,10 @@ func ErrorResponseWithDetails(c *gin.Context, message, code string, details inte
 func WriteAppError(c *gin.Context, err error) {
 	var appError *apperrors.AppError
 	if errors.As(err, &appError) {
-		c.JSON(appError.HTTPStatus, ErrorResponse(c, appError.Code, appError.Message, appError.HTTPStatus))
+		c.AbortWithStatusJSON(appError.HTTPStatus, ErrorResponse(c, appError.Code, appError.Message, appError.HTTPStatus))
 		return
 	}
-	c.JSON(http.StatusInternalServerError, ErrorResponse(c, apperrors.ErrInternalServerError.Code, apperrors.ErrInternalServerError.Message, apperrors.ErrInternalServerError.HTTPStatus))
+	c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse(c, apperrors.ErrInternalServerError.Code, apperrors.ErrInternalServerError.Message, apperrors.ErrInternalServerError.HTTPStatus))
 
 }
 func WriteOk(c *gin.Context, data interface{}) {
