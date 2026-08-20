@@ -12,6 +12,7 @@ import (
 type Dependencies struct {
 	Config      *config.Config
 	AuthService *auth.AuthService
+	Tokens      *auth.JWTManager
 	Notifier    *notify.AsyncNotifier
 	Database    *gorm.DB
 	Logger      *zap.SugaredLogger
@@ -37,6 +38,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 		Config:      cfg,
 		Database:    db,
 		AuthService: authService,
+		Tokens:      tokens,
 		Notifier:    notifier,
 		Logger:      zapLogger,
 	}
