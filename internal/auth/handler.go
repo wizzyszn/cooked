@@ -71,3 +71,11 @@ func (h *AuthHandler) Refresh(ctx *gin.Context) {
 	}
 	models.WriteOk(ctx, res)
 }
+
+func (h *AuthHandler) Logout(ctx *gin.Context) {
+
+}
+
+func (h *AuthHandler) LogoutAll(ctx *gin.Context) {
+	
+}

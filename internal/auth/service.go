@@ -274,3 +274,12 @@ func (s *AuthService) Refresh(ctx context.Context, req *RefreshRequest) (*Refres
 		RefreshToken: newRefreshToken,
 	}, nil
 }
+
+func (s *AuthService) Logout(ctx context.Context) {
+
+}
+
+func (s *AuthService) LogoutAll(ctx context.Context) {
+
+}
+
