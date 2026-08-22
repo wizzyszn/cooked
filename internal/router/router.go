@@ -28,16 +28,17 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	authHandler := auth.NewAuthHandler(deps.AuthService)
 
 	reqAuthM := middlewares.RequireAuth(deps.Tokens)
-
+	
 	{
 		authG.POST("/register", authHandler.Register)
 		authG.GET("/verify-email", authHandler.VerifyEmail)
 		authG.POST("/login", middlewares.NewRateLimiter(5).Limit, authHandler.Login)
 		authG.POST("/refresh", authHandler.Refresh)
 		authG.POST("/logout", authHandler.Logout)
+		authG.POST("/forgot-password", middlewares.NewRateLimiter(5).Limit, authHandler.ForgotPassword)
+		authG.POST("/reset-password", middlewares.NewRateLimiter(5).Limit, authHandler.ResetPassword)
 	}
-	authed := v1.Group("")
-	authed.Use(reqAuthM)
+	authed := authG.Use(reqAuthM)
 	{
 		authed.POST("/logout-all", authHandler.LogoutAll)
 	}
