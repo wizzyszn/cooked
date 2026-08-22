@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/wizzyszn/cooked/pkg/errors"
 	"github.com/wizzyszn/cooked/pkg/models"
 )
@@ -73,9 +74,75 @@ func (h *AuthHandler) Refresh(ctx *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(ctx *gin.Context) {
-
+	var req LogoutRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		models.WriteAppError(ctx, errors.ErrValidation)
+		return
+	}
+	if err := h.service.Logout(ctx.Request.Context(), &req); err != nil {
+		models.WriteAppError(ctx, err)
+		return
+	}
+	models.WriteOk(ctx, gin.H{
+		"message": "Logout successful.",
+	})
 }
 
 func (h *AuthHandler) LogoutAll(ctx *gin.Context) {
-	
+	var req LogoutRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		models.WriteAppError(ctx, errors.ErrValidation)
+		return
+	}
+
+	// Set by RequireAuth middleware (ContextUserID = "userID").
+	userIDStr := ctx.GetString("userID")
+	if userIDStr == "" {
+		models.WriteAppError(ctx, errors.ErrUnAuthorized)
+		return
+	}
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		models.WriteAppError(ctx, errors.ErrUnAuthorized)
+		return
+	}
+
+	if err := h.service.LogoutAll(ctx.Request.Context(), userID, &req); err != nil {
+		models.WriteAppError(ctx, err)
+		return
+	}
+	models.WriteOk(ctx, gin.H{
+		"message": "Successfully logged out all related sessions.",
+	})
+}
+
+func (h *AuthHandler) ForgotPassword(ctx *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		models.WriteAppError(ctx, errors.ErrValidation)
+		return
+	}
+
+	if err := h.service.ForgotPassword(ctx.Request.Context(), &req); err != nil {
+		models.WriteAppError(ctx, err)
+		return
+	}
+	models.WriteOk(ctx, gin.H{
+		"message": "If this email is valid, a reset otp has been sent to this email.",
+	})
+}
+
+func (h *AuthHandler) ResetPassword(ctx *gin.Context) {
+	var req ResetPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		models.WriteAppError(ctx, errors.ErrValidation)
+		return
+	}
+	if err := h.service.ResetPassword(ctx.Request.Context(), &req); err != nil {
+		models.WriteAppError(ctx, err)
+		return
+	}
+	models.WriteOk(ctx, gin.H{
+		"message": "password reset successful",
+	})
 }
