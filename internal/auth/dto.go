@@ -37,3 +37,17 @@ type RefreshResponse struct {
 	RefreshToken string `json:"refresh_token"`
 	AccessToken  string `json:"access_token"`
 }
+
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required,min=32"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Otp      string `json:"otp" binding:"required,len=6"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+}
