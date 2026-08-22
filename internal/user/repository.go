@@ -72,6 +72,10 @@ func (r *Repository) MarkEmailVerified(ctx context.Context, id uuid.UUID) error 
 		Update("is_verified", true).Error
 }
 
+func (r *Repository) Update(ctx context.Context, user *domain.User) error {
+	return r.db.WithContext(ctx).Where("id = ?", user.ID).Save(user).Error
+}
+
 // IsUniqueViolation reports whether err is a Postgres unique-constraint failure.
 func IsUniqueViolation(err error) bool {
 	if err == nil {
