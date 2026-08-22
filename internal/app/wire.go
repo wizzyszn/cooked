@@ -32,7 +32,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 	}
 	notifier := notify.NewAsyncNotifier(store, users, providers, zapLogger)
 
-	authService := auth.NewAuthService(users, tokens, notifier, cfg.App.PublicURL, zapLogger, authRepo)
+	authService := auth.NewAuthService(&cfg.JWT, users, tokens, notifier, cfg.App.PublicURL, zapLogger, authRepo)
 
 	return &Dependencies{
 		Config:      cfg,
