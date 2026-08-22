@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	TemplateSignIn      = "sign_in"
-	TemplateVerifyEmail = "verify_email"
-	TemplateOnboarded   = "onboarded"
+	TemplateSignIn        = "sign_in"
+	TemplateVerifyEmail   = "verify_email"
+	TemplateOnboarded     = "onboarded"
+	TemplateForgotPassOtp = "forgot_otp"
 )
 
 type Rendered struct {
@@ -55,6 +56,20 @@ func Render(template string, payload map[string]any) *Rendered {
 				"Welcome to Cooked",
 				fmt.Sprintf("Hi %s,", htmlEscape(name)),
 				"Your account is ready. Time to cook something good.",
+				"",
+				"",
+			),
+		}
+	case TemplateForgotPassOtp:
+		name := payloadString(payload, "name", "there")
+		otp := payloadString(payload, "otp", "")
+		return &Rendered{
+			Title: "Reset your Cooked password",
+			Body:  fmt.Sprintf("Hi %s, your password reset code is %s. It expires in 30 minutes.", name, otp),
+			HTML: emailHTML(
+				"Reset your password",
+				fmt.Sprintf("Hi %s,", htmlEscape(name)),
+				fmt.Sprintf("Use this code to reset your password. It expires in 30 minutes: %s", otp),
 				"",
 				"",
 			),
