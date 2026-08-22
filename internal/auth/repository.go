@@ -56,6 +56,13 @@ func (r *Repository) RevokeFamily(ctx context.Context, familyID uuid.UUID) (int6
 	return res.RowsAffected, res.Error
 }
 
+func (r *Repository) RevokeAllForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	res := r.db.WithContext(ctx).Model(&domain.RefreshToken{}).
+		Where("user_id = ? AND revoked_at IS NULL", userID).
+		Update("revoked_at", time.Now().UTC())
+	return res.RowsAffected, res.Error
+}
+
 func (r *Repository) MarkReplaced(ctx context.Context, oldID, newID uuid.UUID) error {
 	res := r.db.WithContext(ctx).Model(&domain.RefreshToken{}).Where("id = ? AND revoked_at IS NULL", oldID).Updates(map[string]interface{}{
 		"replaced_by_id": newID,
@@ -118,4 +125,43 @@ func (r *Repository) RotateRefreshToken(ctx context.Context, parentID uuid.UUID,
 		}
 		return nil
 	})
+}
+
+func (r *Repository) CreatePasswordResetToken(ctx context.Context, resetTokenPayload *domain.PasswordResetToken) error {
+	return r.db.WithContext(ctx).Create(resetTokenPayload).Error
+}
+
+func (r *Repository) GetPasswordResetToken(ctx context.Context, otp string, userID uuid.UUID) (*domain.PasswordResetToken, error) {
+	var t domain.PasswordResetToken
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND code = ? AND used_at IS NULL", userID, otp).
+		First(&t).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &t, nil
+}
+
+func (r *Repository) InvalidateUnusedPasswordResetTokens(ctx context.Context, userID uuid.UUID) error {
+	now := time.Now().UTC()
+	return r.db.WithContext(ctx).Model(&domain.PasswordResetToken{}).
+		Where("user_id = ? AND used_at IS NULL", userID).
+		Update("used_at", now).Error
+}
+
+func (r *Repository) MarkPasswordResetTokenAsUsed(ctx context.Context, id uuid.UUID) error {
+	now := time.Now().UTC()
+	res := r.db.WithContext(ctx).Model(&domain.PasswordResetToken{}).
+		Where("id = ? AND used_at IS NULL", id).
+		Update("used_at", now)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
