@@ -128,28 +128,6 @@ func (m *JWTManager) ParseEmailVerificationToken(raw string) (*EmailVerification
 	return &EmailVerification{UserID: userID, Email: claims.Email}, nil
 }
 
-func (m *JWTManager) IssueRefreshToken(userId uuid.UUID, email string, emailVerified bool) (string, time.Time, error) {
-	now := time.Now().UTC()
-	exp := now.Add(m.refreshTTL)
-	claims := AccessClaims{
-		UserID:        userId.String(),
-		Email:         email,
-		EmailVerified: emailVerified,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        uuid.NewString(),
-			Subject:   userId.String(),
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(exp),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(m.refreshSecret))
-	if err != nil {
-		return "", time.Time{}, apperrors.ErrInternalServerError
-	}
-	return signedToken, exp, nil
-}
-
 func (m *JWTManager) Parse(raw string) (*AccessClaims, error) {
 	token, err := jwt.ParseWithClaims(raw, &AccessClaims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {

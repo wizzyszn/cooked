@@ -42,19 +42,20 @@ func TestEmailVerificationTokenRejectsGarbage(t *testing.T) {
 	}
 }
 
-func TestIssueRefreshTokenAreUnique(t *testing.T) {
-	m := testManager(t)
-	userID := uuid.New()
-	a, _, err := m.IssueRefreshToken(userID, "ada@example.com", true)
+func TestGenerateRefreshTokenAreUnique(t *testing.T) {
+	a, ha, err := GenerateRefreshToken()
 	if err != nil {
-		t.Fatalf("issue a: %v", err)
+		t.Fatalf("generate a: %v", err)
 	}
-	b, _, err := m.IssueRefreshToken(userID, "ada@example.com", true)
+	b, hb, err := GenerateRefreshToken()
 	if err != nil {
-		t.Fatalf("issue b: %v", err)
+		t.Fatalf("generate b: %v", err)
 	}
-	if a == b {
-		t.Fatal("refresh tokens minted in the same second must differ")
+	if a == b || ha == hb {
+		t.Fatal("refresh tokens minted back-to-back must differ")
+	}
+	if HashRefreshToken(a) != ha {
+		t.Fatal("returned hash must match HashRefreshToken(raw)")
 	}
 }
 
