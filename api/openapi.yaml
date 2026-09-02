@@ -377,6 +377,100 @@ paths:
       responses:
         "200": {description: Owner view, including processing and moderation state.}
         "404": {description: Media asset is not owned by the caller.}
+  /delicacies:
+    get:
+      tags: [Dishes]
+      operationId: listPublishedDishes
+      parameters:
+        - {name: category, in: query, schema: {type: string}}
+        - {name: region, in: query, schema: {type: string}}
+      responses:
+        "200": {description: Published dishes only, optionally filtered by category and region.}
+    post:
+      tags: [Dishes]
+      operationId: submitDish
+      security: [{bearerAuth: []}]
+      requestBody: {$ref: "#/components/requestBodies/DishWrite"}
+      responses:
+        "201": {description: Pending Dish submitted.}
+        "409": {description: Similar dishes; review details and explicitly confirm before resubmitting.}
+  /delicacies/duplicate-suggestions:
+    get:
+      tags: [Dishes]
+      operationId: suggestDuplicateDishes
+      parameters:
+        - {name: name, in: query, required: true, schema: {type: string, minLength: 3}}
+      responses:
+        "200": {description: Exact and trigram-ranked name/alias matches.}
+  /delicacies/{id}:
+    get:
+      tags: [Dishes]
+      operationId: getPublishedDish
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Published Dish; retired identifiers resolve to their merge target.}
+        "404": {description: Dish is absent or not published.}
+    patch:
+      tags: [Dishes]
+      operationId: editPendingDish
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody: {$ref: "#/components/requestBodies/DishWrite"}
+      responses:
+        "200": {description: Submitter-owned pending Dish updated.}
+  /delicacies/{id}/withdraw:
+    post:
+      tags: [Dishes]
+      operationId: withdrawPendingDish
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "204": {description: Pending Dish withdrawn by its submitter.}
+  /staff/delicacies:
+    get:
+      tags: [Moderation]
+      operationId: listPendingDishes
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Pending moderation queue.}
+    post:
+      tags: [Moderation]
+      operationId: createPublishedDish
+      security: [{bearerAuth: []}]
+      requestBody: {$ref: "#/components/requestBodies/DishWrite"}
+      responses:
+        "201": {description: Published Dish created and audited.}
+  /staff/delicacies/{id}/approve:
+    post:
+      tags: [Moderation]
+      operationId: approveDish
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {$ref: "#/components/requestBodies/ModerationReason"}
+      responses: {"204": {description: Dish published, submitter notified, action audited.}}
+  /staff/delicacies/{id}/reject:
+    post:
+      tags: [Moderation]
+      operationId: rejectDish
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {$ref: "#/components/requestBodies/ModerationReason"}
+      responses: {"204": {description: Dish rejected, submitter notified, action audited.}}
+  /admin/delicacies/{id}/merge:
+    post:
+      tags: [Administration]
+      operationId: mergeDish
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"204": {description: Source merged into target transactionally and audited.}}
+  /taxonomies:
+    get:
+      tags: [Dishes]
+      operationId: listTaxonomies
+      responses: {"200": {description: Active categories, regions, dietary tags, and measurement units.}}
 components:
   securitySchemes:
     bearerAuth:
@@ -407,6 +501,31 @@ components:
         maxLength: 128
         pattern: "^[A-Za-z0-9._:-]+$"
   requestBodies:
+    DishWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, description, category_id, region_ids]
+            properties:
+              name: {type: string, minLength: 3, maxLength: 255}
+              description: {type: string, minLength: 3}
+              category_id: {type: string, format: uuid}
+              region_ids: {type: array, minItems: 1, uniqueItems: true, items: {type: string, format: uuid}}
+              aliases: {type: array, uniqueItems: true, items: {type: string}}
+              country_codes: {type: array, uniqueItems: true, items: {type: string, pattern: "^[A-Za-z]{2}$"}}
+              origin_notes: {type: string}
+              cover_media_id: {type: string, format: uuid}
+              confirm_similar: {type: boolean, default: false}
+    ModerationReason:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [reason]
+            properties: {reason: {type: string, minLength: 3}}
     RoleChange:
       required: true
       content:

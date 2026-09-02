@@ -30,8 +30,8 @@
 - Email/password registration and login, Argon2id password hashing, email verification, rotating refresh tokens, logout/logout-all, and 30-minute password-reset OTPs.
 - Persisted email-notification records, Brevo delivery, an in-process asynchronous dispatcher, and recovery of pending notifications on API startup.
 - Initial Delicacy, Recipe, Ingredient, Step, Tag, Favorite, Rating, Comment, Follow, and Notification schemas/domain types.
-- A partial authenticated Delicacy-create path.
-- Unit tests around password hashing, JWT behavior, notification templating/delivery, and shared errors. `go test ./...` currently passes.
+- A curated Delicacy/Dish taxonomy with moderated submissions, duplicate suggestions, public browse, transactional merges, redirects, outcome notifications, and append-only staff audits.
+- Unit and PostgreSQL integration tests cover identity, media/workers, Dish moderation, migrations, and shared contracts. `go test ./...` currently passes.
 
 ### Present but incomplete or conflicting with the FRD
 
@@ -41,7 +41,7 @@
 | Authentication middleware | M0 separates authentication from verification and loads current account state.                                     | Apply`RequireVerified` only to the FR-102 operations in later milestones.                                                    |
 | Roles                     | M0 provides additive persisted roles and role middleware.                                                          | Add audited Admin assignment and initial-admin provisioning in M1 (FR-001–FR-003).                                            |
 | Profile                   | Repository lookup exists; handler/service files are empty. Dietary preference is currently a single enum.          | Add profile APIs, IANA timezone, bio/avatar, anonymization, and zero-or-more dietary preferences (FR-104–FR-107).             |
-| Delicacies                | Only immediate creation with name/description/images exists.                                                       | Add aliases, taxonomy, pending/approval lifecycle, duplicate suggestions, merge, redirects, and public reads (FR-201–FR-209). |
+| Delicacies                | M3 provides aliases, curated taxonomies, pending moderation, trigram duplicate suggestions, public reads, merges, redirects, and audits. | Recipe-backed Dish-page sorting is completed with immutable Recipe versions in M4. |
 | Recipes                   | Legacy mutable Recipe tables and domain types exist; no Recipe handlers/services/routes exist.                     | Introduce stable Recipes and version-owned immutable content, then backfill legacy data (FR-301–FR-313).                      |
 | Ratings                   | One score per user/Recipe exists only at schema/domain level.                                                      | Replace with three-dimensional version-specific Reviews and aggregates (FR-601–FR-608).                                       |
 | Favorites                 | Table/domain type exists; no API exists.                                                                           | Add idempotent save/unsave/list behavior with access checks (FR-401).                                                          |
@@ -65,7 +65,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [ ] **M0:** Stabilize the foundation and freeze contracts. *(Implementation and local verification complete; first CI run pending.)*
 - [x] **M1:** Identity, profile, preferences, and Google sign-in.
 - [x] **M2:** Media pipeline and durable background jobs.
-- [ ] **M3:** Curated Dish taxonomy and moderation workflow.
+- [x] **M3:** Curated Dish taxonomy and moderation workflow.
 - [ ] **M4:** Recipe identity, immutable versions, and authoring.
 - [ ] **M5:** Favorites, search, browse, and initial discovery.
 - [ ] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
@@ -203,18 +203,18 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Data and backend deliverables
 
-- [ ] Add categories, regions, measurement units, aliases, Dish-region joins, Dish status (`pending`, `published`, `rejected`, `withdrawn`, `retired`), origin notes/country codes, moderation metadata, and Dish redirects.
-- [ ] Enable PostgreSQL `pg_trgm`; use normalized exact-name/alias constraints plus trigram similarity for duplicate suggestions.
-- [ ] Replace immediate Delicacy creation with two commands: verified user submission creates `pending`; staff creation may publish directly.
-- [ ] Add public list/detail/browse endpoints, authenticated pending edit/withdraw endpoints, duplicate-suggestion endpoint, and staff approve/reject/taxonomy endpoints.
-- [ ] Implement Admin-only merge in one transaction: lock both Dishes, move Recipes, merge non-conflicting aliases/regions, retire source, create redirect, and audit before/after metadata.
-- [ ] Build the first moderation/audit primitives here so later Recipe/Review reports reuse them.
+- [x] Add categories, regions, measurement units, aliases, Dish-region joins, Dish status (`pending`, `published`, `rejected`, `withdrawn`, `retired`), origin notes/country codes, moderation metadata, and Dish redirects.
+- [x] Enable PostgreSQL `pg_trgm`; use normalized exact-name/alias constraints plus trigram similarity for duplicate suggestions.
+- [x] Replace immediate Delicacy creation with two commands: verified user submission creates `pending`; staff creation may publish directly.
+- [x] Add public list/detail/browse endpoints, authenticated pending edit/withdraw endpoints, duplicate-suggestion endpoint, and staff approve/reject/taxonomy endpoints.
+- [x] Implement Admin-only merge in one transaction: lock both Dishes, move Recipes, merge non-conflicting aliases/regions, retire source, create redirect, and audit before/after metadata.
+- [x] Build the first moderation/audit primitives here so later Recipe/Review reports reuse them.
 
 ### Exit gate
 
-- [ ] Pending Dishes never appear publicly; published Dishes support category/region browse.
-- [ ] Duplicate warning, confirm-submit, approval, rejection, withdrawal, merge redirect, and rollback tests pass.
-- [ ] Every staff mutation creates exactly one append-only audit record.
+- [x] Pending Dishes never appear publicly; published Dishes support category/region browse.
+- [x] Duplicate warning, confirm-submit, approval, rejection, withdrawal, merge redirect, and rollback tests pass.
+- [x] Every staff mutation creates exactly one append-only audit record.
 
 ---
 

@@ -74,12 +74,29 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	}
 	userHandler := user.NewHandler(deps.UserService)
 	v1.GET("/profiles/:username", userHandler.Profile)
-	//Delicacy
-	delicacyG := v1.Group("/delicacy")
+	// Delicacy is the API's backward-compatible name for the curated Dish catalog.
+	delicacyG := v1.Group("/delicacies")
 	delicacyHandler := delicacy.NewDelicacyHandler(deps.DelicacyService)
-	authed = delicacyG.Use(reqAuthM, middlewares.RequireVerified())
+	delicacyG.GET("", delicacyHandler.List)
+	delicacyG.GET("/duplicate-suggestions", delicacyHandler.Similar)
+	delicacyG.GET("/:id", delicacyHandler.Get)
+	v1.GET("/taxonomies", delicacyHandler.Taxonomies)
+	verified := delicacyG.Group("", reqAuthM, middlewares.RequireVerified())
 	{
-		authed.POST("", delicacyHandler.CreateDelicacy)
+		verified.POST("", delicacyHandler.Create(false))
+		verified.PATCH("/:id", delicacyHandler.Edit)
+		verified.POST("/:id/withdraw", delicacyHandler.Withdraw)
 	}
+	staff := v1.Group("/staff", reqAuthM, middlewares.RequireRole(domain.RoleModerator, domain.RoleAdmin))
+	staff.POST("/delicacies", delicacyHandler.Create(true))
+	staff.GET("/delicacies", delicacyHandler.Pending)
+	staff.POST("/delicacies/:id/approve", delicacyHandler.Moderate(domain.DelicacyPublished))
+	staff.POST("/delicacies/:id/reject", delicacyHandler.Moderate(domain.DelicacyRejected))
+	staff.GET("/taxonomies", delicacyHandler.Taxonomies)
+	staff.POST("/taxonomies/:kind", delicacyHandler.WriteTaxonomy)
+	staff.PUT("/taxonomies/:kind/:id", delicacyHandler.WriteTaxonomy)
+	staff.POST("/taxonomies/:kind/:id/retire", delicacyHandler.RetireTaxonomy)
+	adminDish := v1.Group("/admin/delicacies", reqAuthM, middlewares.RequireRole(domain.RoleAdmin))
+	adminDish.POST("/:id/merge", delicacyHandler.Merge)
 	return r
 }

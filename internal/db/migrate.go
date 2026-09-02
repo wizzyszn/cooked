@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -29,6 +30,9 @@ func newMigrator(database *gorm.DB) (*migrate.Migrate, error) {
 
 	if err := ensurePgcrypto(sqlDB); err != nil {
 		return nil, fmt.Errorf("ensure pgcrypto: %w", err)
+	}
+	if err := ensurePgTrgm(sqlDB); err != nil {
+		return nil, fmt.Errorf("ensure pg_trgm: %w", err)
 	}
 
 	src, err := iofs.New(migrationsFS, "migrations")
@@ -100,5 +104,19 @@ func CurrentVersion(database *gorm.DB) (uint, bool, error) {
 
 func ensurePgcrypto(db *sql.DB) error {
 	_, err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`)
+	return err
+}
+func ensurePgTrgm(db *sql.DB) error {
+	// Extensions are database-global while migration tests use concurrent schemas.
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if _, err = conn.ExecContext(context.Background(), `SELECT pg_advisory_lock(19032026)`); err != nil {
+		return err
+	}
+	defer conn.ExecContext(context.Background(), `SELECT pg_advisory_unlock(19032026)`)
+	_, err = conn.ExecContext(context.Background(), `CREATE EXTENSION IF NOT EXISTS pg_trgm`)
 	return err
 }

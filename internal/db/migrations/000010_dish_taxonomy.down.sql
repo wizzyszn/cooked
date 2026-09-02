@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS delicacy_redirects; DROP TABLE IF EXISTS delicacy_regions; DROP TRIGGER IF EXISTS trg_dish_alias_collision ON delicacy_aliases; DROP TRIGGER IF EXISTS trg_dish_name_collision ON delicacies; DROP FUNCTION IF EXISTS prevent_dish_name_collision(); DROP TABLE IF EXISTS delicacy_aliases;
+DROP INDEX IF EXISTS idx_delicacies_name_trgm; DROP INDEX IF EXISTS idx_delicacies_pending; DROP INDEX IF EXISTS idx_delicacies_public;
+ALTER TABLE delicacies DROP COLUMN IF EXISTS moderation_reason, DROP COLUMN IF EXISTS moderated_by, DROP COLUMN IF EXISTS moderated_at, DROP COLUMN IF EXISTS published_at, DROP COLUMN IF EXISTS submitted_at, DROP COLUMN IF EXISTS origin_notes, DROP COLUMN IF EXISTS country_codes, DROP COLUMN IF EXISTS status, DROP COLUMN IF EXISTS cover_media_id, DROP COLUMN IF EXISTS category_id;
+DROP TABLE IF EXISTS measurement_units; DROP TABLE IF EXISTS regions; DROP TABLE IF EXISTS categories;

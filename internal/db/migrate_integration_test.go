@@ -79,6 +79,7 @@ func TestMigrationLifecycle(t *testing.T) {
 	assertTransactionRollback(t, database)
 	assertM1IdentityLifecycle(t, database)
 	assertM2WorkerLeasing(t, database)
+	assertM3DishWorkflow(t, database)
 
 	if err := MigrateSteps(database, -1); err != nil {
 		t.Fatalf("roll back latest migration: %v", err)
@@ -101,6 +102,42 @@ func TestMigrationLifecycle(t *testing.T) {
 		t.Fatalf("migrate empty schema to latest: %v", err)
 	}
 	assertMigrationVersion(t, database, LatestMigrationVersion)
+}
+
+func assertM3DishWorkflow(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	userID, dishID, categoryID, regionID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	if err := database.Exec("INSERT INTO users(id,email,name,user_name,is_verified,hash_pass) VALUES (?,'dish-user@example.com','Dish User','dish_user',true,'hash')", userID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec("INSERT INTO categories(id,name,slug) VALUES (?,'Rice dishes','rice-dishes')", categoryID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec("INSERT INTO regions(id,name,slug) VALUES (?,'West Africa','west-africa')", regionID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec("INSERT INTO delicacies(id,name,description,created_by,category_id,status,submitted_at) VALUES (?,'Migration Jollof','test',?,?,'pending',now())", dishID, userID, categoryID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec("INSERT INTO delicacy_regions(delicacy_id,region_id) VALUES (?,?)", dishID, regionID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var publicCount int64
+	database.Raw("SELECT count(*) FROM delicacies d JOIN delicacy_regions dr ON dr.delicacy_id=d.id WHERE d.status='published' AND dr.region_id=?", regionID).Scan(&publicCount)
+	if publicCount != 0 {
+		t.Fatal("pending dish leaked into public browse")
+	}
+	if err := database.Exec("INSERT INTO delicacy_aliases(delicacy_id,name) VALUES (?,'Migration Party Rice')", dishID).Error; err != nil {
+		t.Fatal(err)
+	}
+	var similar int64
+	database.Raw("SELECT count(*) FROM delicacies d LEFT JOIN delicacy_aliases a ON a.delicacy_id=d.id WHERE similarity(lower(a.name),'migration party rise') >= .35").Scan(&similar)
+	if similar != 1 {
+		t.Fatalf("trigram duplicate suggestion count=%d", similar)
+	}
+	if err := database.Exec("INSERT INTO delicacies(name,description,status) VALUES ('migration party rice','collision','pending')").Error; err == nil {
+		t.Fatal("canonical name was allowed to collide with an alias")
+	}
 }
 
 func assertM1IdentityLifecycle(t *testing.T, database *gorm.DB) {
