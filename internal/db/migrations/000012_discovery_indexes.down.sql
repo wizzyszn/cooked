@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS idx_favorites_user_cursor;
+DROP INDEX IF EXISTS idx_delicacy_regions_region_dish;
+DROP INDEX IF EXISTS idx_recipe_version_tags_tag_version;
+DROP INDEX IF EXISTS idx_tags_kind_slug;
+DROP INDEX IF EXISTS idx_delicacies_public_recent;
+DROP INDEX IF EXISTS idx_recipe_versions_filters;
+DROP INDEX IF EXISTS idx_recipe_versions_discovery;
+DROP INDEX IF EXISTS idx_recipes_public_current_version;
+DROP INDEX IF EXISTS idx_recipe_versions_title_trgm;

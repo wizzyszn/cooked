@@ -7,6 +7,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/auth"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/delicacy"
+	"github.com/wizzyszn/cooked/internal/discovery"
 	"github.com/wizzyszn/cooked/internal/domain"
 	"github.com/wizzyszn/cooked/internal/health"
 	"github.com/wizzyszn/cooked/internal/media"
@@ -109,5 +110,13 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	recipeAuthor.POST("/:id/publish", middlewares.RequireVerified(), recipeHandler.Publish)
 	recipeAuthor.PATCH("/:id/visibility", recipeHandler.Visibility)
 	recipeAuthor.DELETE("/:id", recipeHandler.Delete)
+	discoveryHandler := discovery.NewHandler(deps.DiscoveryService)
+	v1.GET("/search", discoveryHandler.Search)
+	v1.GET("/browse/dishes", discoveryHandler.Browse)
+	v1.GET("/discovery/recent-dishes", discoveryHandler.Recent)
+	authed.GET("/discovery/recommendations", discoveryHandler.Recommendations)
+	authed.GET("/users/me/favorites", discoveryHandler.Favorites)
+	authed.PUT("/recipes/:id/favorite", discoveryHandler.Save)
+	authed.DELETE("/recipes/:id/favorite", discoveryHandler.Unsave)
 	return r
 }

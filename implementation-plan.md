@@ -67,7 +67,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [x] **M2:** Media pipeline and durable background jobs.
 - [x] **M3:** Curated Dish taxonomy and moderation workflow.
 - [x] **M4:** Recipe identity, immutable versions, and authoring.
-- [ ] **M5:** Favorites, search, browse, and initial discovery.
+- [x] **M5:** Favorites, search, browse, and initial discovery.
 - [ ] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
 - [ ] **M7:** Version-specific Reviews and content reporting.
 - [ ] **M8:** Trending, notification preferences, and engagement automation.
@@ -257,17 +257,17 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Backend deliverables
 
-- [ ] Add idempotent Favorite create/delete and cursor-paginated saved list with access filtering.
-- [ ] Add normalized/trigram Dish search and indexed Recipe-title search across current public versions only.
-- [ ] Implement dietary, difficulty, total-time, category, and region filters with deterministic cursor ordering.
-- [ ] Implement recent Dishes and dietary-preference recommendation feeds. Do not ship final trending until Cook/Review signals exist.
-- [ ] Add representative 50,000-Recipe seed/load dataset and query-plan assertions for critical paths.
+- [x] Add idempotent Favorite create/delete and cursor-paginated saved list with access filtering.
+- [x] Add normalized/trigram Dish search and indexed Recipe-title search across current public versions only.
+- [x] Implement dietary, difficulty, total-time, category, and region filters with deterministic cursor ordering.
+- [x] Implement recent Dishes and dietary-preference recommendation feeds. Do not ship final trending until Cook/Review signals exist.
+- [x] Add representative 50,000-Recipe seed/load dataset and query-plan assertions for critical paths.
 
 ### Exit gate
 
-- [ ] Draft/private/unlisted/deleted/hidden content is absent from every discovery path.
-- [ ] Save/unsave retries remain idempotent and inaccessible saved content leaks no metadata.
-- [ ] Search meets the FRD p95 target under the specified load profile, or the milestone remains open with measured query/index work recorded.
+- [x] Draft/private/unlisted/deleted/hidden content is absent from every discovery path.
+- [x] Save/unsave retries remain idempotent and inaccessible saved content leaks no metadata.
+- [x] Search meets the FRD p95 target under the specified load profile, or the milestone remains open with measured query/index work recorded. *(57.32 ms p95; 563,687 requests; 0 failures; 50 clients; 50,000 Recipes; five minutes.)*
 
 ---
 

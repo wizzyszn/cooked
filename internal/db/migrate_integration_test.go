@@ -82,6 +82,7 @@ func TestMigrationLifecycle(t *testing.T) {
 	assertM2WorkerLeasing(t, database)
 	assertM3DishWorkflow(t, database)
 	assertM4RecipeBackfill(t, database)
+	assertM5DiscoveryIndexes(t, database)
 
 	if err := MigrateSteps(database, -1); err != nil {
 		t.Fatalf("roll back latest migration: %v", err)
@@ -104,6 +105,16 @@ func TestMigrationLifecycle(t *testing.T) {
 		t.Fatalf("migrate empty schema to latest: %v", err)
 	}
 	assertMigrationVersion(t, database, LatestMigrationVersion)
+}
+
+func assertM5DiscoveryIndexes(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	for _, name := range []string{"idx_recipe_versions_title_trgm", "idx_recipe_versions_discovery", "idx_recipe_versions_filters", "idx_recipes_public_current_version", "idx_favorites_user_cursor"} {
+		var exists bool
+		if err := database.Raw("SELECT to_regclass(?) IS NOT NULL", name).Scan(&exists).Error; err != nil || !exists {
+			t.Fatalf("M5 index %s missing: exists=%t err=%v", name, exists, err)
+		}
+	}
 }
 func seedM4LegacyFixture(t *testing.T, database *gorm.DB) {
 	t.Helper()

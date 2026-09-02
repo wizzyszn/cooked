@@ -4,6 +4,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/auth"
 	"github.com/wizzyszn/cooked/internal/config"
 	"github.com/wizzyszn/cooked/internal/delicacy"
+	"github.com/wizzyszn/cooked/internal/discovery"
 	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/notify"
 	"github.com/wizzyszn/cooked/internal/recipe"
@@ -13,19 +14,20 @@ import (
 )
 
 type Dependencies struct {
-	Config          *config.Config
-	AuthService     *auth.AuthService
-	DelicacyService *delicacy.Service
-	Tokens          *auth.JWTManager
-	Notifier        notify.Notifier
-	MediaService    *media.Service
-	ObjectStore     media.ObjectStore
-	Users           *user.Repository
-	UserService     *user.Service
-	GoogleService   *auth.GoogleService
-	RecipeService   *recipe.Service
-	Database        *gorm.DB
-	Logger          *zap.SugaredLogger
+	Config           *config.Config
+	AuthService      *auth.AuthService
+	DelicacyService  *delicacy.Service
+	Tokens           *auth.JWTManager
+	Notifier         notify.Notifier
+	MediaService     *media.Service
+	ObjectStore      media.ObjectStore
+	Users            *user.Repository
+	UserService      *user.Service
+	GoogleService    *auth.GoogleService
+	RecipeService    *recipe.Service
+	DiscoveryService *discovery.Service
+	Database         *gorm.DB
+	Logger           *zap.SugaredLogger
 }
 
 func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogger) *Dependencies {
@@ -60,19 +62,21 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 	googleService := auth.NewGoogleService(cfg.GoogleOAuth, authRepo, authService)
 	delicacyService := delicacy.NewDelicacyService(zapLogger, delicacyRepo)
 	recipeService := recipe.NewService(recipe.NewRepository(db))
+	discoveryService := discovery.NewService(discovery.NewRepository(db))
 	return &Dependencies{
-		Config:          cfg,
-		Database:        db,
-		AuthService:     authService,
-		DelicacyService: delicacyService,
-		Tokens:          tokens,
-		Notifier:        notifier,
-		MediaService:    mediaService,
-		ObjectStore:     objectStore,
-		Users:           users,
-		UserService:     userService,
-		GoogleService:   googleService,
-		RecipeService:   recipeService,
-		Logger:          zapLogger,
+		Config:           cfg,
+		Database:         db,
+		AuthService:      authService,
+		DelicacyService:  delicacyService,
+		Tokens:           tokens,
+		Notifier:         notifier,
+		MediaService:     mediaService,
+		ObjectStore:      objectStore,
+		Users:            users,
+		UserService:      userService,
+		GoogleService:    googleService,
+		RecipeService:    recipeService,
+		DiscoveryService: discoveryService,
+		Logger:           zapLogger,
 	}
 }

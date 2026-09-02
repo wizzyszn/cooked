@@ -11,6 +11,7 @@ tags:
   - name: Profiles
   - name: Administration
   - name: Media
+  - name: Discovery
 paths:
   /health/live:
     get:
@@ -530,6 +531,64 @@ paths:
       security: [{bearerAuth: []}]
       parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
       responses: {"204": {description: Visibility changed without mutating version content.}}
+  /search:
+    get:
+      tags: [Discovery]
+      operationId: searchPublicContent
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: dish_cursor, in: query, schema: {type: string}}
+        - {name: recipe_cursor, in: query, schema: {type: string}}
+        - {$ref: "#/components/parameters/Limit"}
+        - {name: dietary, in: query, schema: {type: string}}
+        - {name: difficulty, in: query, schema: {type: string, enum: [easy, medium, hard]}}
+        - {name: max_total_time_seconds, in: query, schema: {type: integer, minimum: 0}}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: region, in: query, schema: {type: string}}
+      responses: {"200": {description: Cursor-paginated public Dish and current Recipe results.}, "400": {$ref: "#/components/responses/ValidationError"}}
+  /browse/dishes:
+    get:
+      tags: [Discovery]
+      operationId: browseDishes
+      parameters:
+        - {$ref: "#/components/parameters/Cursor"}
+        - {$ref: "#/components/parameters/Limit"}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: region, in: query, schema: {type: string}}
+      responses: {"200": {description: Public Dishes grouped through category and region filters.}}
+  /discovery/recent-dishes:
+    get:
+      tags: [Discovery]
+      operationId: listRecentDishes
+      parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
+      responses: {"200": {description: Recently approved public Dishes.}}
+  /discovery/recommendations:
+    get:
+      tags: [Discovery]
+      operationId: listDietaryRecommendations
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
+      responses: {"200": {description: Public current Recipes matching any private dietary preference.}}
+  /users/me/favorites:
+    get:
+      tags: [Discovery]
+      operationId: listFavorites
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
+      responses: {"200": {description: Accessible saved Recipes; inaccessible saves disclose no metadata.}}
+  /recipes/{id}/favorite:
+    put:
+      tags: [Discovery]
+      operationId: saveRecipe
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"204": {description: Accessible Recipe saved idempotently.}, "404": {description: Recipe missing or inaccessible.}}
+    delete:
+      tags: [Discovery]
+      operationId: unsaveRecipe
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"204": {description: Recipe unsaved idempotently.}}
 components:
   securitySchemes:
     bearerAuth:
