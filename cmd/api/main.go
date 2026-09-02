@@ -68,9 +68,5 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		zapLogger.Errorw("server forced to shutdown", "error", err)
 	}
-	if deps.Notifier != nil {
-		deps.Notifier.Stop()
-	}
-
 	zapLogger.Info("Server exited.")
 }

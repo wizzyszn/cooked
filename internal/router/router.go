@@ -9,6 +9,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/delicacy"
 	"github.com/wizzyszn/cooked/internal/domain"
 	"github.com/wizzyszn/cooked/internal/health"
+	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/user"
 )
 
@@ -63,6 +64,13 @@ func Init(deps *app.Dependencies) *gin.Engine {
 		admin := v1.Group("/admin", reqAuthM, middlewares.RequireRole(domain.RoleAdmin))
 		admin.PUT("/users/:id/roles/:role", userHandler.GrantRole)
 		admin.DELETE("/users/:id/roles/:role", userHandler.RevokeRole)
+	}
+	if deps.MediaService != nil {
+		mediaHandler := media.NewHandler(deps.MediaService)
+		v1.GET("/media/:id", mediaHandler.PublicGet)
+		authed.POST("/media/uploads", mediaHandler.Initialize)
+		authed.POST("/media/:id/complete", mediaHandler.Complete)
+		authed.GET("/media/:id/access", mediaHandler.OwnerGet)
 	}
 	userHandler := user.NewHandler(deps.UserService)
 	v1.GET("/profiles/:username", userHandler.Profile)

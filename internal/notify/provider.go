@@ -12,12 +12,13 @@ type ChannelProvider interface {
 }
 
 type Outbound struct {
-	Name     string
-	Email    string
-	UserID   string
-	Template string
-	Title    string
-	Body     string
-	HTML     string
-	Payload  map[string]any
+	Name           string
+	Email          string
+	UserID         string
+	Template       string
+	Title          string
+	Body           string
+	HTML           string
+	Payload        map[string]any
+	IdempotencyKey string
 }

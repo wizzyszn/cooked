@@ -8,12 +8,33 @@ import (
 )
 
 type Config struct {
-	Server      SeverConfig
-	Database    DatabaseConfig
-	JWT         JWTConfig
-	Brevo       BrevoConfig
-	App         AppConfig
-	GoogleOAuth GoogleOAuthConfig
+	Server        SeverConfig
+	Database      DatabaseConfig
+	JWT           JWTConfig
+	Brevo         BrevoConfig
+	App           AppConfig
+	GoogleOAuth   GoogleOAuthConfig
+	ObjectStorage ObjectStorageConfig
+	Worker        WorkerConfig
+}
+
+type ObjectStorageConfig struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	Region    string
+	UseSSL    bool
+}
+
+func (c ObjectStorageConfig) Enabled() bool {
+	return c.Endpoint != "" && c.AccessKey != "" && c.SecretKey != "" && c.Bucket != ""
+}
+
+type WorkerConfig struct {
+	ID             string
+	PollIntervalMS int
+	BatchSize      int
 }
 
 type AppConfig struct {
@@ -111,6 +132,14 @@ func Load() (*Config, error) {
 			ClientID: viper.GetString("GOOGLE_OAUTH_CLIENT_ID"), ClientSecret: viper.GetString("GOOGLE_OAUTH_CLIENT_SECRET"),
 			RedirectURL: viper.GetString("GOOGLE_OAUTH_REDIRECT_URL"), AllowedReturnURLs: splitCSV(viper.GetString("GOOGLE_OAUTH_ALLOWED_RETURN_URLS")),
 		},
+		ObjectStorage: ObjectStorageConfig{
+			Endpoint: viper.GetString("S3_ENDPOINT"), AccessKey: viper.GetString("S3_ACCESS_KEY"),
+			SecretKey: viper.GetString("S3_SECRET_KEY"), Bucket: viper.GetString("S3_BUCKET"),
+			Region: viper.GetString("S3_REGION"), UseSSL: viper.GetBool("S3_USE_SSL"),
+		},
+		Worker: WorkerConfig{
+			ID: viper.GetString("WORKER_ID"), PollIntervalMS: viper.GetInt("WORKER_POLL_INTERVAL_MS"), BatchSize: viper.GetInt("WORKER_BATCH_SIZE"),
+		},
 	}
 	setDefaultConfigs(cfg)
 	err := validateConfigs(cfg)
@@ -164,6 +193,15 @@ func setDefaultConfigs(cfg *Config) {
 	}
 	if cfg.App.PublicURL == "" {
 		cfg.App.PublicURL = "http://localhost:" + cfg.Server.Port
+	}
+	if cfg.Worker.ID == "" {
+		cfg.Worker.ID = "cooked-worker"
+	}
+	if cfg.Worker.PollIntervalMS == 0 {
+		cfg.Worker.PollIntervalMS = 1000
+	}
+	if cfg.Worker.BatchSize == 0 {
+		cfg.Worker.BatchSize = 20
 	}
 
 }

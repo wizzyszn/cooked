@@ -112,6 +112,12 @@ func (r *Repository) Anonymize(ctx context.Context, userID uuid.UUID, now time.T
 		if err := tx.Exec("DELETE FROM user_dietary_preferences WHERE user_id = ?", userID).Error; err != nil {
 			return err
 		}
+		if err := tx.Exec("UPDATE media_assets SET owner_id = NULL, processing_status = 'deleted', deleted_at = ?, updated_at = ? WHERE owner_id = ? AND (access_scope = 'private' OR purpose = 'profile_avatar')", now, now, userID).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec("UPDATE media_assets SET owner_id = NULL, updated_at = ? WHERE owner_id = ?", now, userID).Error; err != nil {
+			return err
+		}
 		values := map[string]interface{}{"email": "deleted+" + suffix + "@deleted.invalid", "user_name": "deleted_" + suffix[:16], "name": "Deleted user", "picture": nil, "bio": nil, "avatar_media_id": nil, "hash_pass": "", "is_verified": false, "anonymized_at": now, "deactivated_at": now, "updated_at": now}
 		if err := tx.Model(&domain.User{}).Where("id = ?", userID).Updates(values).Error; err != nil {
 			return err

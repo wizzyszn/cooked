@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Cooked API
-  version: 1.0.0-m1
+  version: 1.0.0-m2
   description: Contract for the Cooked v1 API. Product behavior is defined in product-frd.md.
 servers:
   - url: /api/v1
@@ -10,6 +10,7 @@ tags:
   - name: Authentication
   - name: Profiles
   - name: Administration
+  - name: Media
 paths:
   /health/live:
     get:
@@ -331,6 +332,51 @@ paths:
       responses:
         "200": {description: Role revoked and audited.}
         "409": {$ref: "#/components/responses/Conflict"}
+  /media/uploads:
+    post:
+      tags: [Media]
+      operationId: initializeMediaUpload
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MediaUploadRequest"}
+      responses:
+        "201": {description: Short-lived signed upload URL created.}
+        "400": {$ref: "#/components/responses/ValidationError"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
+  /media/{id}/complete:
+    post:
+      tags: [Media]
+      operationId: completeMediaUpload
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "202": {description: Object found and queued for validation and processing.}
+        "400": {$ref: "#/components/responses/ValidationError"}
+        "404": {description: Media asset not found.}
+  /media/{id}:
+    get:
+      tags: [Media]
+      operationId: getPublicMedia
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Ready and approved public media with short-lived delivery URLs.}
+        "404": {description: Missing, private, quarantined, pending, or failed media.}
+  /media/{id}/access:
+    get:
+      tags: [Media]
+      operationId: getOwnedMedia
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Owner view, including processing and moderation state.}
+        "404": {description: Media asset is not owned by the caller.}
 components:
   securitySchemes:
     bearerAuth:
@@ -407,6 +453,16 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    MediaUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [purpose, mime_type, byte_size, access_scope]
+      properties:
+        purpose: {type: string, enum: [profile_avatar, dish_cover, recipe_cover, step_image, review_photo, cook_session_photo]}
+        filename: {type: string, maxLength: 255}
+        mime_type: {type: string, enum: [image/jpeg, image/png]}
+        byte_size: {type: integer, minimum: 1, maximum: 5242880}
+        access_scope: {type: string, enum: [public, private]}
     Meta:
       type: object
       required: [timestamp]

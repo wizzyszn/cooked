@@ -14,12 +14,21 @@ import (
 )
 
 type Service struct {
-	repo *Repository
-	log  *zap.SugaredLogger
+	repo    *Repository
+	log     *zap.SugaredLogger
+	avatars AvatarVerifier
+}
+
+type AvatarVerifier interface {
+	ValidateProfileAvatar(context.Context, uuid.UUID, uuid.UUID) error
 }
 
 func NewService(repo *Repository, log *zap.SugaredLogger) *Service {
 	return &Service{repo: repo, log: log}
+}
+
+func NewServiceWithAvatars(repo *Repository, avatars AvatarVerifier, log *zap.SugaredLogger) *Service {
+	return &Service{repo: repo, avatars: avatars, log: log}
 }
 
 func (s *Service) Me(ctx context.Context, id uuid.UUID) (*PrivateProfile, error) {
@@ -79,6 +88,12 @@ func (s *Service) UpdateProfile(ctx context.Context, id uuid.UUID, req UpdatePro
 		values["timezone"] = tz
 	}
 	if req.AvatarMediaID != nil {
+		if s.avatars == nil {
+			return nil, apperrors.ErrServiceUnavailable
+		}
+		if err := s.avatars.ValidateProfileAvatar(ctx, id, *req.AvatarMediaID); err != nil {
+			return nil, err
+		}
 		values["avatar_media_id"] = *req.AvatarMediaID
 	}
 	if len(values) == 0 {

@@ -70,6 +70,7 @@ func (p *BrevoEmailProvider) Send(ctx context.Context, msg Outbound) (string, er
 		Subject:     msg.Title,
 		TextContent: msg.Body,
 		Tags:        []string{"cooked", msg.Template},
+		Headers:     map[string]interface{}{"idempotencyKey": msg.IdempotencyKey},
 	}
 
 	result, resp, err := p.client.TransactionalEmailsApi.SendTransacEmail(ctx, email)

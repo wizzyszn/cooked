@@ -45,10 +45,11 @@
 | Recipes                   | Legacy mutable Recipe tables and domain types exist; no Recipe handlers/services/routes exist.                     | Introduce stable Recipes and version-owned immutable content, then backfill legacy data (FR-301–FR-313).                      |
 | Ratings                   | One score per user/Recipe exists only at schema/domain level.                                                      | Replace with three-dimensional version-specific Reviews and aggregates (FR-601–FR-608).                                       |
 | Favorites                 | Table/domain type exists; no API exists.                                                                           | Add idempotent save/unsave/list behavior with access checks (FR-401).                                                          |
-| Notifications             | Email delivery exists in the API process; no preferences, in-app reads, delivery attempts, or deduplication exist. | Add durable outbox/worker processing, preferences, in-app endpoints, and idempotent attempts (FR-801–FR-805).                 |
+| Notifications             | M2 persists notification intent, delivery attempts, retry state, and provider idempotency keys; `cmd/worker` owns Brevo delivery. | Add user preferences, in-app reads, engagement producers, and scheduled behavior in M8 (FR-801–FR-805).                     |
+| Media                     | M2 provides S3-compatible signed uploads, quarantined processing, responsive variants, access-aware reads, and avatar references. | Extend ownership/access joins as Dish, Recipe, Step, Review, and Cook Session records land (FR-1001–FR-1005).                |
 | Rate limiting             | Per-process, IP-only memory buckets.                                                                               | Add route/account-aware distributed limits before multi-instance production use (NFR-7).                                       |
 | Request IDs               | M0 registers middleware before request logging and returns IDs in API metadata.                                    | Preserve this ordering on future router changes.                                                                               |
-| Worker                    | `cmd/worker` is empty.                                                                                           | Use it for durable notifications, media processing, scheduled reminders, and aggregate/retry work.                             |
+| Worker                    | M2 runs durable notification and media jobs with PostgreSQL leases, retries, stale-lease recovery, and systemd supervision. | Add scheduled reminders and aggregate/retry work in their owning milestones.                                                  |
 | Tests                     | M0 adds middleware, health, platform, OpenAPI, and real-Postgres migration tests plus backend CI.                  | Extend repository, handler, and service coverage with each feature milestone.                                                  |
 
 ### Work that is not v1 scope
@@ -63,7 +64,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 
 - [ ] **M0:** Stabilize the foundation and freeze contracts. *(Implementation and local verification complete; first CI run pending.)*
 - [x] **M1:** Identity, profile, preferences, and Google sign-in.
-- [ ] **M2:** Media pipeline and durable background jobs.
+- [x] **M2:** Media pipeline and durable background jobs.
 - [ ] **M3:** Curated Dish taxonomy and moderation workflow.
 - [ ] **M4:** Recipe identity, immutable versions, and authoring.
 - [ ] **M5:** Favorites, search, browse, and initial discovery.
@@ -179,18 +180,18 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Backend/worker deliverables
 
-- [ ] Add `media_assets` with owner, purpose, object key, decoded MIME type, byte size, dimensions, moderation status, processing status, visibility/access scope, and responsive variants.
-- [ ] Implement direct-to-object-storage upload initialization and completion endpoints using short-lived signed URLs. The server validates declared constraints before signing and decoded file properties after upload.
-- [ ] Implement worker jobs for metadata stripping, resizing, safety checking, retry/backoff, quarantine, and orphan cleanup.
-- [ ] Convert notification delivery to a durable database outbox claimed by `cmd/worker` using `FOR UPDATE SKIP LOCKED`; keep the API responsible for committing notification intent, not provider calls.
-- [ ] Add `notification_delivery_attempts` and idempotent provider-send keys. Remove reliance on process-local delivery for production.
-- [ ] Enforce authorization-aware media delivery for private Recipe assets and quarantine all pending/failed public assets.
+- [x] Add `media_assets` with owner, purpose, object key, decoded MIME type, byte size, dimensions, moderation status, processing status, visibility/access scope, and responsive variants.
+- [x] Implement direct-to-object-storage upload initialization and completion endpoints using short-lived signed URLs. The server validates declared constraints before signing and decoded file properties after upload.
+- [x] Implement worker jobs for metadata stripping, resizing, safety checking, retry/backoff, quarantine, and orphan cleanup.
+- [x] Convert notification delivery to a durable database outbox claimed by `cmd/worker` using `FOR UPDATE SKIP LOCKED`; keep the API responsible for committing notification intent, not provider calls.
+- [x] Add `notification_delivery_attempts` and idempotent provider-send keys. Remove reliance on process-local delivery for production.
+- [x] Enforce authorization-aware media delivery for private Recipe assets and quarantine all pending/failed public assets. *(M2 defaults private assets to owner-only access; Recipe collaborator/staff policies extend this boundary when Recipe access control lands in M4.)*
 
 ### Exit gate
 
-- [ ] Public, private, quarantined, oversized, spoofed-MIME, failed-processing, and deleted-owner media tests pass.
-- [ ] Killing and restarting the worker does not lose or duplicate a notification/media job.
-- [ ] Profile avatars can use processed `MediaAsset` references instead of arbitrary URLs.
+- [x] Public, private, quarantined, oversized, spoofed-MIME, failed-processing, and deleted-owner media tests pass.
+- [x] Killing and restarting the worker does not lose or duplicate a notification/media job. *(PostgreSQL leases use `FOR UPDATE SKIP LOCKED`; restart tests cover provider-idempotent notification replay and retryable media processing.)*
+- [x] Profile avatars can use processed `MediaAsset` references instead of arbitrary URLs.
 
 ---
 

@@ -18,8 +18,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/wizzyszn/cooked/internal/auth"
 	"github.com/wizzyszn/cooked/internal/config"
+	"github.com/wizzyszn/cooked/internal/domain"
 	"github.com/wizzyszn/cooked/internal/health"
+	"github.com/wizzyszn/cooked/internal/media"
+	"github.com/wizzyszn/cooked/internal/notify"
 	"github.com/wizzyszn/cooked/internal/user"
+	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -74,6 +78,7 @@ func TestMigrationLifecycle(t *testing.T) {
 	assertReadiness(t, database)
 	assertTransactionRollback(t, database)
 	assertM1IdentityLifecycle(t, database)
+	assertM2WorkerLeasing(t, database)
 
 	if err := MigrateSteps(database, -1); err != nil {
 		t.Fatalf("roll back latest migration: %v", err)
@@ -116,6 +121,10 @@ func assertM1IdentityLifecycle(t *testing.T, database *gorm.DB) {
 	if err := database.Exec("INSERT INTO oauth_identities (user_id,provider,provider_subject,email) VALUES (?,'google','subject-1','m1@example.com')", accountID).Error; err != nil {
 		t.Fatalf("insert oauth identity: %v", err)
 	}
+	mediaID := uuid.New()
+	if err := database.Exec("INSERT INTO media_assets (id,owner_id,purpose,object_key,declared_mime_type,processing_status,moderation_status,access_scope,expires_at) VALUES (?,?, 'profile_avatar', ?, 'image/jpeg', 'ready', 'approved', 'public', ?)", mediaID, accountID, "original/test/"+mediaID.String()+".jpg", time.Now().Add(time.Hour)).Error; err != nil {
+		t.Fatalf("insert M2 avatar: %v", err)
+	}
 	repo := user.NewRepository(database)
 	assertGoogleOAuthLifecycle(t, database, repo)
 	if err := repo.ReplaceDietaryPreferences(t.Context(), accountID, []string{"vegan", "halal"}); err != nil {
@@ -128,17 +137,52 @@ func assertM1IdentityLifecycle(t *testing.T, database *gorm.DB) {
 	if err := repo.Anonymize(t.Context(), accountID, time.Now().UTC()); err != nil {
 		t.Fatalf("anonymize account: %v", err)
 	}
-	var liveTokens, identities, retainedRecipes, audits int64
+	var liveTokens, identities, retainedRecipes, audits, liveAvatar int64
 	database.Raw("SELECT count(*) FROM refresh_tokens WHERE user_id=? AND revoked_at IS NULL", accountID).Scan(&liveTokens)
 	database.Raw("SELECT count(*) FROM oauth_identities WHERE user_id=?", accountID).Scan(&identities)
 	database.Raw("SELECT count(*) FROM recipes WHERE id=? AND user_id=?", recipeID, accountID).Scan(&retainedRecipes)
 	database.Raw("SELECT count(*) FROM audit_logs WHERE target_id=? AND action='user.anonymized'", accountID).Scan(&audits)
+	database.Raw("SELECT count(*) FROM media_assets WHERE id=? AND deleted_at IS NULL", mediaID).Scan(&liveAvatar)
 	loaded, err = repo.FindByID(t.Context(), accountID)
 	if err != nil || loaded == nil || loaded.DeactivatedAt == nil || loaded.Name != "Deleted user" || strings.Contains(loaded.Email, "m1@") {
 		t.Fatalf("anonymized user invalid: %#v err=%v", loaded, err)
 	}
-	if liveTokens != 0 || identities != 0 || retainedRecipes != 1 || audits != 1 {
-		t.Fatalf("anonymization invariant tokens=%d identities=%d recipes=%d audits=%d", liveTokens, identities, retainedRecipes, audits)
+	if liveTokens != 0 || identities != 0 || retainedRecipes != 1 || audits != 1 || liveAvatar != 0 {
+		t.Fatalf("anonymization invariant tokens=%d identities=%d recipes=%d audits=%d liveAvatar=%d", liveTokens, identities, retainedRecipes, audits, liveAvatar)
+	}
+}
+
+func assertM2WorkerLeasing(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	userID := uuid.New()
+	if err := database.Exec("INSERT INTO users (id,email,name,user_name,is_verified,hash_pass) VALUES (?,?,?,?,true,'hash')", userID, "m2@example.com", "M Two", "m_two").Error; err != nil {
+		t.Fatalf("insert M2 user: %v", err)
+	}
+	store := notify.NewStore(database)
+	n := &domain.Notification{UserID: userID, Channel: domain.NotificationChannelEmail, Template: notify.TemplateVerifyEmail, PayloadJSON: datatypes.JSON([]byte(`{"name":"M Two"}`)), Status: domain.NotificationStatusPending, NextAttemptAt: time.Now().Add(-time.Minute)}
+	if err := store.Create(t.Context(), n); err != nil {
+		t.Fatalf("create outbox notification: %v", err)
+	}
+	first, err := store.ClaimPending(t.Context(), "worker-a", 1, time.Now())
+	if err != nil || len(first) != 1 {
+		t.Fatalf("first notification lease rows=%d err=%v", len(first), err)
+	}
+	second, err := store.ClaimPending(t.Context(), "worker-b", 1, time.Now())
+	if err != nil || len(second) != 0 {
+		t.Fatalf("concurrent notification lease rows=%d err=%v", len(second), err)
+	}
+	mediaRepo := media.NewRepository(database)
+	asset := &domain.MediaAsset{OwnerID: &userID, Purpose: domain.MediaPurposeRecipeCover, ObjectKey: "original/m2/" + uuid.NewString() + ".jpg", DeclaredMIMEType: "image/jpeg", ProcessingStatus: domain.MediaUploaded, ModerationStatus: domain.MediaModerationPending, AccessScope: domain.MediaPublic, ExpiresAt: time.Now().Add(time.Hour), NextAttemptAt: time.Now().Add(-time.Minute)}
+	if err := mediaRepo.Create(t.Context(), asset); err != nil {
+		t.Fatalf("create media job: %v", err)
+	}
+	claimed, err := mediaRepo.Claim(t.Context(), "worker-a", 1, time.Now())
+	if err != nil || len(claimed) != 1 {
+		t.Fatalf("first media lease rows=%d err=%v", len(claimed), err)
+	}
+	claimed, err = mediaRepo.Claim(t.Context(), "worker-b", 1, time.Now())
+	if err != nil || len(claimed) != 0 {
+		t.Fatalf("concurrent media lease rows=%d err=%v", len(claimed), err)
 	}
 }
 
