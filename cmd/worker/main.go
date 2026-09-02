@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/wizzyszn/cooked/internal/config"
+	"github.com/wizzyszn/cooked/internal/cook"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/logger"
 	"github.com/wizzyszn/cooked/internal/media"
@@ -36,6 +37,7 @@ func main() {
 		providers = append(providers, notify.NewBrevoEmailProvider(&cfg.Brevo, zapLogger))
 	}
 	var runners []jobRunner
+	runners = append(runners, cook.NewStreakProjector(database))
 	if len(providers) > 0 {
 		runners = append(runners, notify.NewWorker(notificationStore, users, providers, cfg.Worker.ID, cfg.Worker.BatchSize, zapLogger))
 	} else {

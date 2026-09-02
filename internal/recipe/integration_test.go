@@ -151,7 +151,7 @@ func recipeDB(t *testing.T) *gorm.DB {
 	t.Cleanup(func() { base.Exec("DROP SCHEMA IF EXISTS " + schema + " CASCADE") })
 	u, _ := url.Parse(raw)
 	q := u.Query()
-	q.Set("search_path", schema)
+	q.Set("search_path", schema+",public")
 	u.RawQuery = q.Encode()
 	d, e := gorm.Open(postgres.Open(u.String()), &gorm.Config{})
 	if e != nil {

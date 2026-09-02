@@ -141,7 +141,7 @@ func dishTestDB(t *testing.T) *gorm.DB {
 		t.Fatal(e)
 	}
 	q := u.Query()
-	q.Set("search_path", schema)
+	q.Set("search_path", schema+",public")
 	u.RawQuery = q.Encode()
 	database, e := gorm.Open(postgres.Open(u.String()), &gorm.Config{})
 	if e != nil {

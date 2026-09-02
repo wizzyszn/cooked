@@ -1,0 +1,11 @@
+DROP TRIGGER IF EXISTS trg_immutable_streak_ledger ON streak_ledger_entries;
+DROP TRIGGER IF EXISTS trg_immutable_xp_ledger ON xp_ledger_entries;
+DROP FUNCTION IF EXISTS prevent_reward_ledger_mutation();
+DROP TABLE IF EXISTS analytics_events;
+DROP TABLE IF EXISTS streak_ledger_entries;
+DROP TABLE IF EXISTS xp_ledger_entries;
+DROP TABLE IF EXISTS cook_completion_commands;
+DROP TABLE IF EXISTS cook_timers;
+DROP TABLE IF EXISTS cook_session_steps;
+DROP TABLE IF EXISTS cook_sessions;
+ALTER TABLE users DROP COLUMN IF EXISTS streak_last_qualifying_date;

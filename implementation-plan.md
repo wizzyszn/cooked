@@ -68,7 +68,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [x] **M3:** Curated Dish taxonomy and moderation workflow.
 - [x] **M4:** Recipe identity, immutable versions, and authoring.
 - [x] **M5:** Favorites, search, browse, and initial discovery.
-- [ ] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
+- [x] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
 - [ ] **M7:** Version-specific Reviews and content reporting.
 - [ ] **M8:** Trending, notification preferences, and engagement automation.
 - [ ] **M9:** Launch hardening, migration cutover, and sign-off.
@@ -279,25 +279,25 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Data and transaction deliverables
 
-- [ ] Add Cook Sessions, Step progress, Timer state, completion idempotency records, immutable XP/streak ledger entries, and cached user aggregates.
-- [ ] Snapshot the completion-local date and IANA timezone on the session; timezone changes never rewrite historical rows.
-- [ ] Implement one-active-session-per-user/version, resume, Step visit, timer state, abandon, and completion commands.
-- [ ] In one completion transaction: lock the session/user reward scope, verify every Step visited, complete once, apply per-Recipe/day and five-rewarded-session/day limits, calculate 50/+10/+25 awards, append ledger entries, update streak aggregates, and emit authoritative analytics/outbox events.
-- [ ] Model zero-XP cap decisions in the ledger/audit projection so reward behavior can be explained and recomputed.
-- [ ] Add a scheduled worker projection that makes an expired current streak display as zero even before another completion.
+- [x] Add Cook Sessions, Step progress, Timer state, completion idempotency records, immutable XP/streak ledger entries, and cached user aggregates.
+- [x] Snapshot the completion-local date and IANA timezone on the session; timezone changes never rewrite historical rows.
+- [x] Implement one-active-session-per-user/version, resume, Step visit, timer state, abandon, and completion commands.
+- [x] In one completion transaction: lock the session/user reward scope, verify every Step visited, complete once, apply per-Recipe/day and five-rewarded-session/day limits, calculate 50/+10/+25 awards, append ledger entries, update streak aggregates, and emit authoritative analytics/outbox events.
+- [x] Model zero-XP cap decisions in the ledger/audit projection so reward behavior can be explained and recomputed.
+- [x] Add a scheduled worker projection that makes an expired current streak display as zero even before another completion.
 
 ### API deliverables
 
-- [ ] Start/resume session; retrieve active session; visit Step; create/update timer; abandon; complete with `Idempotency-Key`; list the current user's sessions.
-- [ ] Product analytics ingestion for allowlisted client events and server-side generation for authoritative events.
-- [ ] Internal metrics endpoints/report queries for activation, Cook Mode conversion, Review eligibility placeholder, and seven-day repeat completion.
+- [x] Start/resume session; retrieve active session; visit Step; create/update timer; abandon; complete with `Idempotency-Key`; list the current user's sessions.
+- [x] Product analytics ingestion for allowlisted client events and server-side generation for authoritative events.
+- [x] Internal metrics endpoints/report queries for activation, Cook Mode conversion, Review eligibility placeholder, and seven-day repeat completion.
 
 ### Exit gate
 
-- [ ] Concurrency tests prove duplicate completion cannot duplicate completion state, analytics, XP, bonuses, or streak advancement.
-- [ ] DST boundaries, timezone changes, missed days, same-day repeats, version repeats, first-Dish bonus, and daily cap scenarios pass with a fake clock.
-- [ ] Session/timer API tests prove persisted deadlines and progress survive process restarts and can be restored by a client.
-- [ ] Activation and seven-day return metrics reconcile exactly with source Cook Sessions.
+- [x] Concurrency tests prove duplicate completion cannot duplicate completion state, analytics, XP, bonuses, or streak advancement.
+- [x] DST boundaries, timezone changes, missed days, same-day repeats, version repeats, first-Dish bonus, and daily cap scenarios pass with a fake clock.
+- [x] Session/timer API tests prove persisted deadlines and progress survive process restarts and can be restored by a client.
+- [x] Activation and seven-day return metrics reconcile exactly with source Cook Sessions.
 
 ---
 

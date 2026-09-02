@@ -75,6 +75,9 @@ func (r *Repository) ReplaceDietaryPreferences(ctx context.Context, userID uuid.
 		if err := tx.Exec("DELETE FROM user_dietary_preferences WHERE user_id = ?", userID).Error; err != nil {
 			return err
 		}
+		if err := tx.Exec("UPDATE analytics_events SET anonymous_id = gen_random_uuid(), user_id = NULL WHERE user_id = ?", userID).Error; err != nil {
+			return err
+		}
 		if len(slugs) == 0 {
 			return nil
 		}

@@ -5,6 +5,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/api/middlewares"
 	"github.com/wizzyszn/cooked/internal/app"
 	"github.com/wizzyszn/cooked/internal/auth"
+	"github.com/wizzyszn/cooked/internal/cook"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/delicacy"
 	"github.com/wizzyszn/cooked/internal/discovery"
@@ -118,5 +119,16 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	authed.GET("/users/me/favorites", discoveryHandler.Favorites)
 	authed.PUT("/recipes/:id/favorite", discoveryHandler.Save)
 	authed.DELETE("/recipes/:id/favorite", discoveryHandler.Unsave)
+	cookHandler := cook.NewHandler(deps.CookService)
+	v1.POST("/analytics/events", middlewares.OptionalAuth(deps.Tokens, deps.Users), cookHandler.Ingest)
+	authed.POST("/cook-sessions", cookHandler.Start)
+	authed.GET("/cook-sessions", cookHandler.List)
+	authed.GET("/cook-sessions/active", cookHandler.Active)
+	authed.GET("/cook-sessions/:id", cookHandler.Get)
+	authed.POST("/cook-sessions/:id/steps/:stepId/visit", cookHandler.Visit)
+	authed.PUT("/cook-sessions/:id/steps/:stepId/timer", cookHandler.Timer)
+	authed.POST("/cook-sessions/:id/abandon", cookHandler.Abandon)
+	authed.POST("/cook-sessions/:id/complete", cookHandler.Complete)
+	staff.GET("/metrics/product", cookHandler.Metrics)
 	return r
 }

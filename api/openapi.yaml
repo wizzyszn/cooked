@@ -12,6 +12,8 @@ tags:
   - name: Administration
   - name: Media
   - name: Discovery
+  - name: Cook Mode
+  - name: Analytics
 paths:
   /health/live:
     get:
@@ -589,6 +591,77 @@ paths:
       security: [{bearerAuth: []}]
       parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
       responses: {"204": {description: Recipe unsaved idempotently.}}
+  /cook-sessions:
+    post:
+      tags: [Cook Mode]
+      operationId: startOrResumeCookSession
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Starts or resumes the one active session for an exact Recipe Version.}}
+    get:
+      tags: [Cook Mode]
+      operationId: listCookSessions
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
+      responses: {"200": {description: Current user's cursor-paginated Cook Sessions.}}
+  /cook-sessions/active:
+    get:
+      tags: [Cook Mode]
+      operationId: getActiveCookSession
+      security: [{bearerAuth: []}]
+      parameters: [{name: recipe_version_id, in: query, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: Restorable active session with visited Steps and timers.}, "404": {description: No active session.}}
+  /cook-sessions/{id}:
+    get:
+      tags: [Cook Mode]
+      operationId: getCookSession
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: Owned session with persisted progress and timer deadlines.}}
+  /cook-sessions/{id}/steps/{stepId}/visit:
+    post:
+      tags: [Cook Mode]
+      operationId: visitCookStep
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: stepId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses: {"204": {description: Exact-version Step visit recorded idempotently.}}
+  /cook-sessions/{id}/steps/{stepId}/timer:
+    put:
+      tags: [Cook Mode]
+      operationId: updateCookTimer
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: stepId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses: {"200": {description: Timer started, paused, resumed, or reset with a persisted deadline.}}
+  /cook-sessions/{id}/abandon:
+    post:
+      tags: [Cook Mode]
+      operationId: abandonCookSession
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"204": {description: Session abandoned without rewards or eligibility.}}
+  /cook-sessions/{id}/complete:
+    post:
+      tags: [Cook Mode]
+      operationId: completeCookSession
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      responses: {"200": {description: Session, XP, streak, and analytics committed atomically.}, "409": {$ref: "#/components/responses/Conflict"}}
+  /analytics/events:
+    post:
+      tags: [Analytics]
+      operationId: ingestAnalyticsEvent
+      responses: {"204": {description: Allowlisted pseudonymous versioned client event accepted.}}
+  /staff/metrics/product:
+    get:
+      tags: [Analytics]
+      operationId: getProductMetrics
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Activation, conversion, eligibility placeholder, and matured seven-day retention metrics.}}
 components:
   securitySchemes:
     bearerAuth:

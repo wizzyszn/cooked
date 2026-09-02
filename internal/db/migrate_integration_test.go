@@ -83,6 +83,7 @@ func TestMigrationLifecycle(t *testing.T) {
 	assertM3DishWorkflow(t, database)
 	assertM4RecipeBackfill(t, database)
 	assertM5DiscoveryIndexes(t, database)
+	assertM6CookSchema(t, database)
 
 	if err := MigrateSteps(database, -1); err != nil {
 		t.Fatalf("roll back latest migration: %v", err)
@@ -105,6 +106,16 @@ func TestMigrationLifecycle(t *testing.T) {
 		t.Fatalf("migrate empty schema to latest: %v", err)
 	}
 	assertMigrationVersion(t, database, LatestMigrationVersion)
+}
+
+func assertM6CookSchema(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	for _, table := range []string{"cook_sessions", "cook_session_steps", "cook_timers", "cook_completion_commands", "xp_ledger_entries", "streak_ledger_entries", "analytics_events"} {
+		var exists bool
+		if err := database.Raw("SELECT to_regclass(?) IS NOT NULL", table).Scan(&exists).Error; err != nil || !exists {
+			t.Fatalf("M6 table %s missing: exists=%t err=%v", table, exists, err)
+		}
+	}
 }
 
 func assertM5DiscoveryIndexes(t *testing.T, database *gorm.DB) {
@@ -327,7 +338,7 @@ func withSearchPath(rawURL, schema string) (string, error) {
 		return "", fmt.Errorf("parse database URL: %w", err)
 	}
 	query := parsed.Query()
-	query.Set("search_path", schema)
+	query.Set("search_path", schema+",public")
 	parsed.RawQuery = query.Encode()
 	return parsed.String(), nil
 }
@@ -414,7 +425,7 @@ func TestWithSearchPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.Query().Get("search_path") != "isolated" {
+	if parsed.Query().Get("search_path") != "isolated,public" {
 		t.Fatalf("search_path = %q", parsed.Query().Get("search_path"))
 	}
 }

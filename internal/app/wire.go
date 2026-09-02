@@ -3,10 +3,12 @@ package app
 import (
 	"github.com/wizzyszn/cooked/internal/auth"
 	"github.com/wizzyszn/cooked/internal/config"
+	"github.com/wizzyszn/cooked/internal/cook"
 	"github.com/wizzyszn/cooked/internal/delicacy"
 	"github.com/wizzyszn/cooked/internal/discovery"
 	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/notify"
+	"github.com/wizzyszn/cooked/internal/platform"
 	"github.com/wizzyszn/cooked/internal/recipe"
 	"github.com/wizzyszn/cooked/internal/user"
 	"go.uber.org/zap"
@@ -26,6 +28,7 @@ type Dependencies struct {
 	GoogleService    *auth.GoogleService
 	RecipeService    *recipe.Service
 	DiscoveryService *discovery.Service
+	CookService      *cook.Service
 	Database         *gorm.DB
 	Logger           *zap.SugaredLogger
 }
@@ -63,6 +66,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 	delicacyService := delicacy.NewDelicacyService(zapLogger, delicacyRepo)
 	recipeService := recipe.NewService(recipe.NewRepository(db))
 	discoveryService := discovery.NewService(discovery.NewRepository(db))
+	cookService := cook.NewServiceWithClock(cook.NewRepository(db), platform.RealClock{}, cook.Rewards{Base: cfg.Cook.BaseXP, Photo: cfg.Cook.PhotoXP, FirstDish: cfg.Cook.FirstDishXP, DailySessions: cfg.Cook.DailyRewardedSessions})
 	return &Dependencies{
 		Config:           cfg,
 		Database:         db,
@@ -77,6 +81,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 		GoogleService:    googleService,
 		RecipeService:    recipeService,
 		DiscoveryService: discoveryService,
+		CookService:      cookService,
 		Logger:           zapLogger,
 	}
 }

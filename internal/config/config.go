@@ -16,6 +16,14 @@ type Config struct {
 	GoogleOAuth   GoogleOAuthConfig
 	ObjectStorage ObjectStorageConfig
 	Worker        WorkerConfig
+	Cook          CookConfig
+}
+
+type CookConfig struct {
+	BaseXP                int
+	PhotoXP               int
+	FirstDishXP           int
+	DailyRewardedSessions int
 }
 
 type ObjectStorageConfig struct {
@@ -140,6 +148,7 @@ func Load() (*Config, error) {
 		Worker: WorkerConfig{
 			ID: viper.GetString("WORKER_ID"), PollIntervalMS: viper.GetInt("WORKER_POLL_INTERVAL_MS"), BatchSize: viper.GetInt("WORKER_BATCH_SIZE"),
 		},
+		Cook: CookConfig{BaseXP: viper.GetInt("COOK_BASE_XP"), PhotoXP: viper.GetInt("COOK_PHOTO_XP"), FirstDishXP: viper.GetInt("COOK_FIRST_DISH_XP"), DailyRewardedSessions: viper.GetInt("COOK_DAILY_REWARDED_SESSIONS")},
 	}
 	setDefaultConfigs(cfg)
 	err := validateConfigs(cfg)
@@ -151,6 +160,18 @@ func Load() (*Config, error) {
 }
 
 func setDefaultConfigs(cfg *Config) {
+	if cfg.Cook.BaseXP == 0 {
+		cfg.Cook.BaseXP = 50
+	}
+	if cfg.Cook.PhotoXP == 0 {
+		cfg.Cook.PhotoXP = 10
+	}
+	if cfg.Cook.FirstDishXP == 0 {
+		cfg.Cook.FirstDishXP = 25
+	}
+	if cfg.Cook.DailyRewardedSessions == 0 {
+		cfg.Cook.DailyRewardedSessions = 5
+	}
 	if cfg.Server.Env == "" {
 		cfg.Server.Env = "development"
 	}
@@ -228,6 +249,9 @@ func validateConfigs(cfg *Config) error {
 	}
 	if cfg.JWT.RefreshSecret == "" {
 		return fmt.Errorf("JWT_REFRESH_SECRET is required")
+	}
+	if cfg.Cook.BaseXP < 1 || cfg.Cook.PhotoXP < 1 || cfg.Cook.FirstDishXP < 1 || cfg.Cook.DailyRewardedSessions < 1 {
+		return fmt.Errorf("Cook reward values must be positive")
 	}
 	return nil
 }
