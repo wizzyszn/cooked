@@ -69,7 +69,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [x] **M4:** Recipe identity, immutable versions, and authoring.
 - [x] **M5:** Favorites, search, browse, and initial discovery.
 - [x] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
-- [ ] **M7:** Version-specific Reviews and content reporting.
+- [x] **M7:** Version-specific Reviews and content reporting.
 - [ ] **M8:** Trending, notification preferences, and engagement automation.
 - [ ] **M9:** Launch hardening, migration cutover, and sign-off.
 
@@ -309,18 +309,18 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Backend deliverables
 
-- [ ] Add Reviews with exact Recipe Version/user uniqueness, three checked 1–5 dimensions, optional text/photo, moderation state, and timestamps.
-- [ ] Enforce exact-version completed-session eligibility and prohibit author self-Reviews inside the write transaction.
-- [ ] Maintain version-specific aggregate projections transactionally or through an idempotent recompute job with a reconciliation command.
-- [ ] Add polymorphic Content Reports with unique reporter/target, reason taxonomy, threshold state, and transactional auto-hide after the third eligible reporter.
-- [ ] Extend moderation actions/console APIs for reported Recipes and Reviews, restore/keep-hidden/remove outcomes, and author notifications.
-- [ ] Add Review create/edit/read/list and current/historical aggregate endpoints.
+- [x] Add Reviews with exact Recipe Version/user uniqueness, three checked 1–5 dimensions, optional text/photo, moderation state, and timestamps.
+- [x] Enforce exact-version completed-session eligibility and prohibit author self-Reviews inside the write transaction.
+- [x] Maintain version-specific aggregate projections transactionally or through an idempotent recompute job with a reconciliation command.
+- [x] Add polymorphic Content Reports with unique reporter/target, reason taxonomy, threshold state, and transactional auto-hide after the third eligible reporter.
+- [x] Extend moderation actions/console APIs for reported Recipes and Reviews, restore/keep-hidden/remove outcomes, and author notifications.
+- [x] Add Review create/edit/read/list and current/historical aggregate endpoints.
 
 ### Exit gate
 
-- [ ] Review authorization matrix covers unverified users, wrong versions, incomplete sessions, authors, duplicates, edited Reviews, and inaccessible content.
-- [ ] Current Recipe aggregates exclude historical versions and reconcile from source Reviews.
-- [ ] Three distinct verified reports hide once; duplicates/unverified users do not count; restore/remove preserves immutable audit history.
+- [x] Review authorization matrix covers unverified users, wrong versions, incomplete sessions, authors, duplicates, edited Reviews, and inaccessible content.
+- [x] Current Recipe aggregates exclude historical versions and reconcile from source Reviews.
+- [x] Three distinct verified reports hide once; duplicates/unverified users do not count; restore/remove preserves immutable audit history.
 
 ---
 

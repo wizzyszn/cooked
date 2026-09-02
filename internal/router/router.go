@@ -13,6 +13,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/health"
 	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/recipe"
+	"github.com/wizzyszn/cooked/internal/review"
 	"github.com/wizzyszn/cooked/internal/user"
 )
 
@@ -130,5 +131,14 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	authed.POST("/cook-sessions/:id/abandon", cookHandler.Abandon)
 	authed.POST("/cook-sessions/:id/complete", cookHandler.Complete)
 	staff.GET("/metrics/product", cookHandler.Metrics)
+	reviewHandler := review.NewHandler(deps.ReviewService)
+	v1.GET("/reviews/:id", middlewares.OptionalAuth(deps.Tokens, deps.Users), reviewHandler.Get)
+	v1.GET("/recipe-versions/:id/reviews", middlewares.OptionalAuth(deps.Tokens, deps.Users), reviewHandler.List)
+	verifiedReviews := v1.Group("", reqAuthM, middlewares.RequireVerified())
+	verifiedReviews.POST("/recipe-versions/:id/reviews", reviewHandler.Create)
+	verifiedReviews.PATCH("/reviews/:id", reviewHandler.Edit)
+	verifiedReviews.POST("/reports", reviewHandler.Report)
+	staff.GET("/reports", reviewHandler.Queue)
+	staff.POST("/reports/:id/decision", reviewHandler.Moderate)
 	return r
 }

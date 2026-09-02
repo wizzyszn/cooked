@@ -28,6 +28,8 @@ func (r *Repository) Find(ctx context.Context, id uuid.UUID) (*domain.MediaAsset
 func (r *Repository) CanAccessRecipeMedia(ctx context.Context, mediaID, requester uuid.UUID) (bool, error) {
 	var n int64
 	e := r.db.WithContext(ctx).Raw(`SELECT count(*) FROM recipe_version_media rvm JOIN recipe_versions v ON v.id=rvm.recipe_version_id JOIN recipes r ON r.id=v.recipe_id WHERE rvm.media_asset_id=? AND r.deleted_at IS NULL AND r.moderation_status='visible' AND (r.user_id=? OR r.visibility IN ('public','unlisted') OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=? AND ur.role IN ('moderator','admin'))) AND (v.lifecycle='published' OR r.user_id=? OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=? AND ur.role IN ('moderator','admin')))`, mediaID, requester, requester, requester, requester).Scan(&n).Error
+	if e != nil || n > 0 { return n > 0, e }
+	e = r.db.WithContext(ctx).Raw(`SELECT count(*) FROM reviews rv JOIN recipes r ON r.id=rv.recipe_id WHERE rv.photo_media_id=? AND rv.moderation_status='visible' AND r.deleted_at IS NULL AND r.moderation_status='visible' AND (r.user_id=? OR rv.user_id=? OR r.visibility IN ('public','unlisted') OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=? AND ur.role IN ('moderator','admin')))`, mediaID, requester, requester, requester).Scan(&n).Error
 	return n > 0, e
 }
 func (r *Repository) MarkUploaded(ctx context.Context, id, owner uuid.UUID, size int64, now time.Time) error {

@@ -10,6 +10,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/notify"
 	"github.com/wizzyszn/cooked/internal/platform"
 	"github.com/wizzyszn/cooked/internal/recipe"
+	"github.com/wizzyszn/cooked/internal/review"
 	"github.com/wizzyszn/cooked/internal/user"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -29,6 +30,7 @@ type Dependencies struct {
 	RecipeService    *recipe.Service
 	DiscoveryService *discovery.Service
 	CookService      *cook.Service
+	ReviewService    *review.Service
 	Database         *gorm.DB
 	Logger           *zap.SugaredLogger
 }
@@ -67,6 +69,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 	recipeService := recipe.NewService(recipe.NewRepository(db))
 	discoveryService := discovery.NewService(discovery.NewRepository(db))
 	cookService := cook.NewServiceWithClock(cook.NewRepository(db), platform.RealClock{}, cook.Rewards{Base: cfg.Cook.BaseXP, Photo: cfg.Cook.PhotoXP, FirstDish: cfg.Cook.FirstDishXP, DailySessions: cfg.Cook.DailyRewardedSessions})
+	reviewService := review.NewService(review.NewRepository(db))
 	return &Dependencies{
 		Config:           cfg,
 		Database:         db,
@@ -82,6 +85,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 		RecipeService:    recipeService,
 		DiscoveryService: discoveryService,
 		CookService:      cookService,
+		ReviewService:    reviewService,
 		Logger:           zapLogger,
 	}
 }

@@ -503,6 +503,56 @@ paths:
         - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
         - {name: servings, in: query, schema: {type: integer, minimum: 1}}
       responses: {"200": {description: Accessible immutable version with outdated marker.}}
+  /recipe-versions/{id}/reviews:
+    get:
+      tags: [Reviews]
+      operationId: listVersionReviews
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: Visible Reviews and aggregate scores for exactly this Recipe Version.}, "404": {description: Version or parent Recipe is inaccessible.}}
+    post:
+      tags: [Reviews]
+      operationId: createVersionReview
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}
+      requestBody: {$ref: "#/components/requestBodies/ReviewWrite"}
+      responses: {"201": {description: Version-specific Review created and author notified.}, "403": {description: Verification, completed-session eligibility, or authorship rule failed.}, "409": {$ref: "#/components/responses/Conflict"}}
+  /reviews/{id}:
+    get:
+      tags: [Reviews]
+      operationId: getReview
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"200": {description: Accessible Review.}, "404": {description: Review or parent Recipe is inaccessible.}}
+    patch:
+      tags: [Reviews]
+      operationId: editReview
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {$ref: "#/components/requestBodies/ReviewWrite"}
+      responses: {"200": {description: Owner's Review edited and aggregate recomputed.}}
+  /reports:
+    post:
+      tags: [Moderation]
+      operationId: reportContent
+      security: [{bearerAuth: []}]
+      parameters: [{name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}]
+      requestBody: {$ref: "#/components/requestBodies/ContentReport"}
+      responses: {"201": {description: Report accepted; a third distinct verified report auto-hides the target.}, "409": {$ref: "#/components/responses/Conflict"}}
+  /staff/reports:
+    get:
+      tags: [Moderation]
+      operationId: listPendingReports
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Pending Recipe and Review report queue.}}
+  /staff/reports/{id}/decision:
+    post:
+      tags: [Moderation]
+      operationId: moderateReportedContent
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {$ref: "#/components/requestBodies/ReportDecision"}
+      responses: {"204": {description: Target restored, kept hidden, or removed; reports resolved, author notified, and action audited.}}
   /recipes/{id}/draft:
     get:
       tags: [Recipes]
@@ -741,6 +791,44 @@ components:
             type: object
             required: [reason]
             properties: {reason: {type: string, minLength: 3, maxLength: 1000}}
+    ReviewWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [taste, clarity, difficulty_accuracy]
+            properties:
+              taste: {type: integer, minimum: 1, maximum: 5}
+              clarity: {type: integer, minimum: 1, maximum: 5}
+              difficulty_accuracy: {type: integer, minimum: 1, maximum: 5, description: Accuracy of the stated difficulty, not whether the Recipe is easy or hard.}
+              comment: {type: string, maxLength: 5000}
+              photo_media_id: {type: string, format: uuid}
+    ContentReport:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [target_type, target_id, reason]
+            properties:
+              target_type: {type: string, enum: [recipe, review]}
+              target_id: {type: string, format: uuid}
+              reason: {type: string, enum: [spam, harassment, hate, dangerous, copyright, misinformation, other]}
+              details: {type: string, maxLength: 2000}
+    ReportDecision:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [action, reason]
+            properties:
+              action: {type: string, enum: [restore, keep_hidden, remove]}
+              reason: {type: string, minLength: 1}
   responses:
     ValidationError:
       description: Request validation failed.

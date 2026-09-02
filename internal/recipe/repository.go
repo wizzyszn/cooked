@@ -32,6 +32,14 @@ func (r *Repository) Version(ctx context.Context, id uuid.UUID) (*domain.RecipeV
 	if errors.Is(e, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
+	if e == nil {
+		var aggregate domain.ReviewAggregate
+		if ae := r.db.WithContext(ctx).First(&aggregate, "recipe_version_id=?", v.ID).Error; ae == nil {
+			v.ReviewAggregate = &aggregate
+		} else if !errors.Is(ae, gorm.ErrRecordNotFound) {
+			return nil, ae
+		}
+	}
 	return &v, e
 }
 func (r *Repository) Draft(ctx context.Context, id uuid.UUID) (*domain.RecipeVersion, error) {

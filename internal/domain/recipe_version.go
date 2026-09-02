@@ -44,6 +44,7 @@ type RecipeVersion struct {
 	Steps           []RecipeVersionStep       `gorm:"foreignKey:RecipeVersionID" json:"steps"`
 	Tags            []Tag                     `gorm:"many2many:recipe_version_tags" json:"tags,omitempty"`
 	Media           []MediaAsset              `gorm:"many2many:recipe_version_media" json:"media,omitempty"`
+	ReviewAggregate *ReviewAggregate          `gorm:"-" json:"review_aggregate,omitempty"`
 }
 type RecipeVersionIngredient struct {
 	ID                uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
