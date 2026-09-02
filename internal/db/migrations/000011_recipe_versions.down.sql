@@ -1,0 +1,4 @@
+DROP TRIGGER IF EXISTS trg_immutable_rvm ON recipe_version_media; DROP TRIGGER IF EXISTS trg_immutable_rvt ON recipe_version_tags; DROP TRIGGER IF EXISTS trg_immutable_rvs ON recipe_version_steps; DROP TRIGGER IF EXISTS trg_immutable_rvi ON recipe_version_ingredients; DROP FUNCTION IF EXISTS prevent_published_child_mutation();
+DROP TRIGGER IF EXISTS trg_immutable_recipe_version ON recipe_versions; DROP FUNCTION IF EXISTS prevent_published_version_mutation();
+DROP TABLE IF EXISTS recipe_publish_commands; DROP TABLE IF EXISTS recipe_version_media; DROP TABLE IF EXISTS recipe_version_tags; DROP TABLE IF EXISTS recipe_step_ingredients; DROP TABLE IF EXISTS recipe_version_steps; DROP TABLE IF EXISTS recipe_version_ingredients;
+ALTER TABLE recipes DROP CONSTRAINT IF EXISTS fk_recipe_current_version; ALTER TABLE recipes DROP COLUMN IF EXISTS current_published_version_id; DROP TABLE IF EXISTS recipe_versions; ALTER TABLE recipes DROP COLUMN IF EXISTS moderation_status;

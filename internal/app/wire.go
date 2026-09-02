@@ -6,6 +6,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/delicacy"
 	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/notify"
+	"github.com/wizzyszn/cooked/internal/recipe"
 	"github.com/wizzyszn/cooked/internal/user"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -22,6 +23,7 @@ type Dependencies struct {
 	Users           *user.Repository
 	UserService     *user.Service
 	GoogleService   *auth.GoogleService
+	RecipeService   *recipe.Service
 	Database        *gorm.DB
 	Logger          *zap.SugaredLogger
 }
@@ -57,6 +59,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 	}
 	googleService := auth.NewGoogleService(cfg.GoogleOAuth, authRepo, authService)
 	delicacyService := delicacy.NewDelicacyService(zapLogger, delicacyRepo)
+	recipeService := recipe.NewService(recipe.NewRepository(db))
 	return &Dependencies{
 		Config:          cfg,
 		Database:        db,
@@ -69,6 +72,7 @@ func NewDependencies(cfg *config.Config, db *gorm.DB, zapLogger *zap.SugaredLogg
 		Users:           users,
 		UserService:     userService,
 		GoogleService:   googleService,
+		RecipeService:   recipeService,
 		Logger:          zapLogger,
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/domain"
 	"github.com/wizzyszn/cooked/internal/health"
 	"github.com/wizzyszn/cooked/internal/media"
+	"github.com/wizzyszn/cooked/internal/recipe"
 	"github.com/wizzyszn/cooked/internal/user"
 )
 
@@ -67,7 +68,7 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	}
 	if deps.MediaService != nil {
 		mediaHandler := media.NewHandler(deps.MediaService)
-		v1.GET("/media/:id", mediaHandler.PublicGet)
+		v1.GET("/media/:id", middlewares.OptionalAuth(deps.Tokens, deps.Users), mediaHandler.PublicGet)
 		authed.POST("/media/uploads", mediaHandler.Initialize)
 		authed.POST("/media/:id/complete", mediaHandler.Complete)
 		authed.GET("/media/:id/access", mediaHandler.OwnerGet)
@@ -98,5 +99,15 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	staff.POST("/taxonomies/:kind/:id/retire", delicacyHandler.RetireTaxonomy)
 	adminDish := v1.Group("/admin/delicacies", reqAuthM, middlewares.RequireRole(domain.RoleAdmin))
 	adminDish.POST("/:id/merge", delicacyHandler.Merge)
+	recipeHandler := recipe.NewHandler(deps.RecipeService)
+	v1.GET("/recipes/:id", middlewares.OptionalAuth(deps.Tokens, deps.Users), recipeHandler.Get)
+	v1.GET("/recipe-versions/:id", middlewares.OptionalAuth(deps.Tokens, deps.Users), recipeHandler.GetVersion)
+	recipeAuthor := v1.Group("/recipes", reqAuthM)
+	recipeAuthor.POST("", recipeHandler.Create)
+	recipeAuthor.GET("/:id/draft", recipeHandler.Draft)
+	recipeAuthor.PUT("/:id/draft", recipeHandler.Update)
+	recipeAuthor.POST("/:id/publish", middlewares.RequireVerified(), recipeHandler.Publish)
+	recipeAuthor.PATCH("/:id/visibility", recipeHandler.Visibility)
+	recipeAuthor.DELETE("/:id", recipeHandler.Delete)
 	return r
 }

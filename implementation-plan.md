@@ -42,7 +42,7 @@
 | Roles                     | M0 provides additive persisted roles and role middleware.                                                          | Add audited Admin assignment and initial-admin provisioning in M1 (FR-001–FR-003).                                            |
 | Profile                   | Repository lookup exists; handler/service files are empty. Dietary preference is currently a single enum.          | Add profile APIs, IANA timezone, bio/avatar, anonymization, and zero-or-more dietary preferences (FR-104–FR-107).             |
 | Delicacies                | M3 provides aliases, curated taxonomies, pending moderation, trigram duplicate suggestions, public reads, merges, redirects, and audits. | Recipe-backed Dish-page sorting is completed with immutable Recipe versions in M4. |
-| Recipes                   | Legacy mutable Recipe tables and domain types exist; no Recipe handlers/services/routes exist.                     | Introduce stable Recipes and version-owned immutable content, then backfill legacy data (FR-301–FR-313).                      |
+| Recipes                   | M4 provides stable Recipe identities, immutable published versions, mutable drafts, backfill, access-aware media, authoring routes, and serving projections. | Extend current-version search, browse, and favorites from this read model in M5. |
 | Ratings                   | One score per user/Recipe exists only at schema/domain level.                                                      | Replace with three-dimensional version-specific Reviews and aggregates (FR-601–FR-608).                                       |
 | Favorites                 | Table/domain type exists; no API exists.                                                                           | Add idempotent save/unsave/list behavior with access checks (FR-401).                                                          |
 | Notifications             | M2 persists notification intent, delivery attempts, retry state, and provider idempotency keys; `cmd/worker` owns Brevo delivery. | Add user preferences, in-app reads, engagement producers, and scheduled behavior in M8 (FR-801–FR-805).                     |
@@ -66,7 +66,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [x] **M1:** Identity, profile, preferences, and Google sign-in.
 - [x] **M2:** Media pipeline and durable background jobs.
 - [x] **M3:** Curated Dish taxonomy and moderation workflow.
-- [ ] **M4:** Recipe identity, immutable versions, and authoring.
+- [x] **M4:** Recipe identity, immutable versions, and authoring.
 - [ ] **M5:** Favorites, search, browse, and initial discovery.
 - [ ] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
 - [ ] **M7:** Version-specific Reviews and content reporting.
@@ -226,26 +226,26 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Migration and domain deliverables
 
-- [ ] Add stable Recipe identity fields: author, Delicacy, current published version, visibility, moderation status, soft-delete state.
-- [ ] Add Recipe Versions with version number, lifecycle (`draft`, `published`), snapshot fields, publication timestamp, and immutable-after-publication enforcement.
-- [ ] Add version-owned Ingredients, Steps, Step-Ingredient references, tags, and media joins. Store duration in seconds and preserve ordered positions with partial unique indexes.
-- [ ] Add one-active-draft-per-Recipe and one-version-number-per-Recipe constraints.
-- [ ] Backfill every legacy Recipe into a published v1 Recipe Version, copy legacy Ingredients/Steps/tags/images, set current version, validate counts, then switch application reads. Keep legacy columns until a later verified cleanup migration.
+- [x] Add stable Recipe identity fields: author, Delicacy, current published version, visibility, moderation status, soft-delete state.
+- [x] Add Recipe Versions with version number, lifecycle (`draft`, `published`), snapshot fields, publication timestamp, and immutable-after-publication enforcement.
+- [x] Add version-owned Ingredients, Steps, Step-Ingredient references, tags, and media joins. Store duration in seconds and preserve ordered positions with partial unique indexes.
+- [x] Add one-active-draft-per-Recipe and one-version-number-per-Recipe constraints.
+- [x] Backfill every legacy Recipe into a published v1 Recipe Version, copy legacy Ingredients/Steps/tags/images, set current version, validate counts, then switch application reads. Keep legacy columns until a later verified cleanup migration.
 
 ### API deliverables
 
-- [ ] Public/current reads: `GET /recipes/{id}`, `GET /recipe-versions/{id}`.
-- [ ] Authoring: create Recipe + draft, fetch draft, update draft snapshot, publish with `Idempotency-Key`, change visibility, soft-delete.
-- [ ] Access policy: public is discoverable, unlisted is link-readable, private/draft is author/staff-only, and eligible historical versions are direct-link read-only with an outdated marker.
-- [ ] Validate complete publishable snapshots, Ingredient scaling metadata, action enums, references, positions, times, servings, difficulty, and media readiness.
-- [ ] Return scaled Ingredient display as a read projection; never persist a version mutation for requested servings.
+- [x] Public/current reads: `GET /recipes/{id}`, `GET /recipe-versions/{id}`.
+- [x] Authoring: create Recipe + draft, fetch draft, update draft snapshot, publish with `Idempotency-Key`, change visibility, soft-delete.
+- [x] Access policy: public is discoverable, unlisted is link-readable, private/draft is author/staff-only, and eligible historical versions are direct-link read-only with an outdated marker.
+- [x] Validate complete publishable snapshots, Ingredient scaling metadata, action enums, references, positions, times, servings, difficulty, and media readiness.
+- [x] Return scaled Ingredient display as a read projection; never persist a version mutation for requested servings.
 
 ### Exit gate
 
-- [ ] Concurrent publish attempts create one current immutable version per successful idempotency command.
-- [ ] Editing after publication never changes the previous snapshot.
-- [ ] Legacy fixture backfill matches Recipe, Ingredient, Step, tag, and image counts.
-- [ ] The complete visibility/history/access matrix passes service, repository, and end-to-end tests.
+- [x] Concurrent publish attempts create one current immutable version per successful idempotency command.
+- [x] Editing after publication never changes the previous snapshot.
+- [x] Legacy fixture backfill matches Recipe, Ingredient, Step, tag, and image counts.
+- [x] The complete visibility/history/access matrix passes service, repository, and end-to-end tests.
 
 ---
 

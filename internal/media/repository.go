@@ -25,6 +25,11 @@ func (r *Repository) Find(ctx context.Context, id uuid.UUID) (*domain.MediaAsset
 	}
 	return &asset, err
 }
+func (r *Repository) CanAccessRecipeMedia(ctx context.Context, mediaID, requester uuid.UUID) (bool, error) {
+	var n int64
+	e := r.db.WithContext(ctx).Raw(`SELECT count(*) FROM recipe_version_media rvm JOIN recipe_versions v ON v.id=rvm.recipe_version_id JOIN recipes r ON r.id=v.recipe_id WHERE rvm.media_asset_id=? AND r.deleted_at IS NULL AND r.moderation_status='visible' AND (r.user_id=? OR r.visibility IN ('public','unlisted') OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=? AND ur.role IN ('moderator','admin'))) AND (v.lifecycle='published' OR r.user_id=? OR EXISTS(SELECT 1 FROM user_roles ur WHERE ur.user_id=? AND ur.role IN ('moderator','admin')))`, mediaID, requester, requester, requester, requester).Scan(&n).Error
+	return n > 0, e
+}
 func (r *Repository) MarkUploaded(ctx context.Context, id, owner uuid.UUID, size int64, now time.Time) error {
 	res := r.db.WithContext(ctx).Model(&domain.MediaAsset{}).Where("id = ? AND owner_id = ? AND processing_status = ? AND expires_at > ?", id, owner, domain.MediaAwaitingUpload, now).Updates(map[string]any{"processing_status": domain.MediaUploaded, "byte_size": size, "uploaded_at": now, "next_attempt_at": now})
 	if res.Error != nil {

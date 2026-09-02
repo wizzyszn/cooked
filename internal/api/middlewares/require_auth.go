@@ -72,6 +72,19 @@ func RequireAuth(jwt *auth.JWTManager, users CurrentUserLoader) gin.HandlerFunc 
 	}
 }
 
+// OptionalAuth loads an account when a bearer token is supplied while keeping
+// genuinely public reads available to guests.
+func OptionalAuth(jwt *auth.JWTManager, users CurrentUserLoader) gin.HandlerFunc {
+	required := RequireAuth(jwt, users)
+	return func(ctx *gin.Context) {
+		if strings.TrimSpace(ctx.GetHeader("Authorization")) == "" {
+			ctx.Next()
+			return
+		}
+		required(ctx)
+	}
+}
+
 func RequireVerified() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		currentUser, ok := CurrentUserFromContext(ctx)

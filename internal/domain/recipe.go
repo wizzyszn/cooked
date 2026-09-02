@@ -24,8 +24,10 @@ const (
 // A user may publish multiple recipes for the same delicacy.
 type Recipe struct {
 	BaseModel
-	UserID     uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
-	DelicacyID uuid.UUID `gorm:"type:uuid;not null;index" json:"delicacy_id"`
+	UserID                    uuid.UUID              `gorm:"type:uuid;not null;index" json:"user_id"`
+	DelicacyID                uuid.UUID              `gorm:"type:uuid;not null;index" json:"delicacy_id"`
+	CurrentPublishedVersionID *uuid.UUID             `gorm:"type:uuid" json:"current_published_version_id,omitempty"`
+	ModerationStatus          RecipeModerationStatus `json:"moderation_status"`
 
 	Title   string `gorm:"size:255;not null" json:"title"`
 	Summary string `gorm:"size:512" json:"summary,omitempty"`

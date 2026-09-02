@@ -69,6 +69,7 @@ func TestMigrationLifecycle(t *testing.T) {
 		t.Fatalf("migrate empty schema to v6 fixture: %v", err)
 	}
 	assertMigrationVersion(t, database, 6)
+	seedM4LegacyFixture(t, database)
 
 	if err := MigrateUp(database); err != nil {
 		t.Fatalf("migrate v6 fixture to latest: %v", err)
@@ -80,6 +81,7 @@ func TestMigrationLifecycle(t *testing.T) {
 	assertM1IdentityLifecycle(t, database)
 	assertM2WorkerLeasing(t, database)
 	assertM3DishWorkflow(t, database)
+	assertM4RecipeBackfill(t, database)
 
 	if err := MigrateSteps(database, -1); err != nil {
 		t.Fatalf("roll back latest migration: %v", err)
@@ -102,6 +104,38 @@ func TestMigrationLifecycle(t *testing.T) {
 		t.Fatalf("migrate empty schema to latest: %v", err)
 	}
 	assertMigrationVersion(t, database, LatestMigrationVersion)
+}
+func seedM4LegacyFixture(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	u, d, r, i := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	if e := database.Exec("INSERT INTO users(id,email,name,user_name,is_verified,hash_pass) VALUES (?,'legacy-m4@example.com','Legacy','legacy_m4',true,'hash')", u).Error; e != nil {
+		t.Fatal(e)
+	}
+	if e := database.Exec("INSERT INTO delicacies(id,name,description,created_by) VALUES (?,'Legacy M4 Dish','legacy',?)", d, u).Error; e != nil {
+		t.Fatal(e)
+	}
+	if e := database.Exec("INSERT INTO recipes(id,user_id,delicacy_id,title,summary,algo,imgs,servings) VALUES (?,?,?,'M4 legacy fixture','summary','legacy notes','[\"legacy.jpg\"]',2)", r, u, d).Error; e != nil {
+		t.Fatal(e)
+	}
+	if e := database.Exec("INSERT INTO ingredients(id,name) VALUES (?,'Legacy rice')", i).Error; e != nil {
+		t.Fatal(e)
+	}
+	if e := database.Exec("INSERT INTO recipe_ingredients(id,recipe_id,ingredient_id,quantity,position) VALUES (?,?,?,?,0)", uuid.New(), r, i, 1).Error; e != nil {
+		t.Fatal(e)
+	}
+	if e := database.Exec("INSERT INTO recipe_steps(id,recipe_id,position,body) VALUES (?,?,0,'Cook it')", uuid.New(), r).Error; e != nil {
+		t.Fatal(e)
+	}
+}
+func assertM4RecipeBackfill(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	var versions, ingredients, steps int64
+	database.Raw("SELECT count(*) FROM recipe_versions v JOIN recipes r ON r.id=v.recipe_id WHERE r.title='M4 legacy fixture' AND v.version_number=1 AND v.lifecycle='published' AND v.legacy_image_urls='[\"legacy.jpg\"]'").Scan(&versions)
+	database.Raw("SELECT count(*) FROM recipe_version_ingredients i JOIN recipe_versions v ON v.id=i.recipe_version_id JOIN recipes r ON r.id=v.recipe_id WHERE r.title='M4 legacy fixture'").Scan(&ingredients)
+	database.Raw("SELECT count(*) FROM recipe_version_steps s JOIN recipe_versions v ON v.id=s.recipe_version_id JOIN recipes r ON r.id=v.recipe_id WHERE r.title='M4 legacy fixture'").Scan(&steps)
+	if versions != 1 || ingredients != 1 || steps != 1 {
+		t.Fatalf("M4 legacy backfill versions=%d ingredients=%d steps=%d", versions, ingredients, steps)
+	}
 }
 
 func assertM3DishWorkflow(t *testing.T, database *gorm.DB) {

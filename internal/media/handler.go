@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/wizzyszn/cooked/internal/api/middlewares"
 	"github.com/wizzyszn/cooked/internal/domain"
 	apperrors "github.com/wizzyszn/cooked/pkg/errors"
 	"github.com/wizzyszn/cooked/pkg/models"
@@ -57,7 +58,13 @@ func (h *Handler) Complete(c *gin.Context) {
 	}
 	c.JSON(http.StatusAccepted, models.SuccessResponse(c, out))
 }
-func (h *Handler) PublicGet(c *gin.Context) { h.get(c, nil) }
+func (h *Handler) PublicGet(c *gin.Context) {
+	var id *uuid.UUID
+	if u, ok := middlewares.CurrentUserFromContext(c); ok {
+		id = &u.ID
+	}
+	h.get(c, id)
+}
 func (h *Handler) OwnerGet(c *gin.Context) {
 	id, e := mediaUser(c)
 	if e != nil {

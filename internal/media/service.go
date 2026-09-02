@@ -129,7 +129,19 @@ func (s *Service) project(ctx context.Context, a *domain.MediaAsset, requester u
 		}
 	}
 	if a.AccessScope == domain.MediaPrivate && !isOwner {
-		return nil, apperrors.ErrNotFound
+		gate, ok := s.repo.(interface {
+			CanAccessRecipeMedia(context.Context, uuid.UUID, uuid.UUID) (bool, error)
+		})
+		if !ok {
+			return nil, apperrors.ErrNotFound
+		}
+		allowed, err := gate.CanAccessRecipeMedia(ctx, a.ID, requester)
+		if err != nil {
+			return nil, apperrors.Internal(s.log, "check recipe media access", err)
+		}
+		if !allowed {
+			return nil, apperrors.ErrNotFound
+		}
 	}
 	out := &AssetResponse{ID: a.ID, Purpose: a.Purpose, ProcessingStatus: a.ProcessingStatus, ModerationStatus: a.ModerationStatus, AccessScope: a.AccessScope, MIMEType: a.DecodedMIMEType, ByteSize: a.ByteSize, Width: a.Width, Height: a.Height}
 	if a.ProcessingStatus == domain.MediaReady && a.ModerationStatus == domain.MediaModerationApproved {
