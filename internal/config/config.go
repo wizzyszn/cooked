@@ -8,15 +8,27 @@ import (
 )
 
 type Config struct {
-	Server   SeverConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	Brevo    BrevoConfig
-	App      AppConfig
+	Server      SeverConfig
+	Database    DatabaseConfig
+	JWT         JWTConfig
+	Brevo       BrevoConfig
+	App         AppConfig
+	GoogleOAuth GoogleOAuthConfig
 }
 
 type AppConfig struct {
 	PublicURL string
+}
+
+type GoogleOAuthConfig struct {
+	ClientID          string
+	ClientSecret      string
+	RedirectURL       string
+	AllowedReturnURLs []string
+}
+
+func (c GoogleOAuthConfig) Enabled() bool {
+	return c.ClientID != "" && c.ClientSecret != "" && c.RedirectURL != "" && len(c.AllowedReturnURLs) > 0
 }
 
 type JWTConfig struct {
@@ -94,6 +106,10 @@ func Load() (*Config, error) {
 		},
 		App: AppConfig{
 			PublicURL: viper.GetString("APP_PUBLIC_URL"),
+		},
+		GoogleOAuth: GoogleOAuthConfig{
+			ClientID: viper.GetString("GOOGLE_OAUTH_CLIENT_ID"), ClientSecret: viper.GetString("GOOGLE_OAUTH_CLIENT_SECRET"),
+			RedirectURL: viper.GetString("GOOGLE_OAUTH_REDIRECT_URL"), AllowedReturnURLs: splitCSV(viper.GetString("GOOGLE_OAUTH_ALLOWED_RETURN_URLS")),
 		},
 	}
 	setDefaultConfigs(cfg)

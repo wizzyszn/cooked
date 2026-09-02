@@ -98,12 +98,12 @@ func (h *AuthHandler) LogoutAll(ctx *gin.Context) {
 	// Set by RequireAuth middleware (ContextUserID = "userID").
 	userIDStr := ctx.GetString("userID")
 	if userIDStr == "" {
-		models.WriteAppError(ctx, errors.ErrUnAuthorized)
+		models.WriteAppError(ctx, errors.ErrUnauthorized)
 		return
 	}
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		models.WriteAppError(ctx, errors.ErrUnAuthorized)
+		models.WriteAppError(ctx, errors.ErrUnauthorized)
 		return
 	}
 

@@ -28,7 +28,9 @@ func newMeta(c *gin.Context) *APIMeta {
 	}
 	if c != nil {
 		if reqID, exists := c.Get("requestId"); exists {
-			meta.RequestId = reqID.(string)
+			if value, ok := reqID.(string); ok {
+				meta.RequestId = value
+			}
 		}
 	}
 	return meta

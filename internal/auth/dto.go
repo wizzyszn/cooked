@@ -1,6 +1,6 @@
 package auth
 
-import "github.com/wizzyszn/cooked/internal/domain"
+import "github.com/wizzyszn/cooked/internal/user"
 
 type RegisterRequest struct {
 	Name     string `json:"name" binding:"required,min=3,max=32"`
@@ -10,13 +10,13 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	User    *domain.SanitizedUser `json:"user"`
-	Message string                `json:"message"`
+	User    *user.PrivateProfile `json:"user"`
+	Message string               `json:"message"`
 }
 
 type VerifyEmailResponse struct {
-	User    *domain.SanitizedUser `json:"user"`
-	Message string                `json:"message"`
+	User    *user.PrivateProfile `json:"user"`
+	Message string               `json:"message"`
 }
 
 type LoginRequest struct {
@@ -25,8 +25,8 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	User   *domain.SanitizedUser `json:"user"`
-	Tokens *TokenPair            `json:"tokens"`
+	User   *user.PrivateProfile `json:"user"`
+	Tokens *TokenPair           `json:"tokens"`
 }
 
 type RefreshRequest struct {

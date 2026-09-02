@@ -1,11 +1,11 @@
 package middlewares
 
 import (
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	apperrors "github.com/wizzyszn/cooked/pkg/errors"
 	"github.com/wizzyszn/cooked/pkg/models"
 )
 
@@ -80,7 +80,7 @@ func (rl *RateLimter) allow(ip string) bool {
 func (rl *RateLimter) Limit(ctx *gin.Context) {
 	ip := ctx.ClientIP()
 	if !rl.allow(ip) {
-		ctx.AbortWithStatusJSON(http.StatusTooManyRequests, models.ErrorResponse(ctx, "TOO_MANY_REQUEST", "Too many requests please try again later", http.StatusTooManyRequests))
+		models.WriteAppError(ctx, apperrors.ErrTooManyRequests)
 		return
 	}
 }

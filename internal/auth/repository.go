@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,111 @@ var (
 type Repository struct {
 	db *gorm.DB
 }
+
+type OAuthFlow struct {
+	StateHash    string
+	CodeVerifier string
+	NonceHash    string
+	ReturnURL    string
+	ExpiresAt    time.Time
+	UsedAt       *time.Time
+	CreatedAt    time.Time
+}
+
+func (OAuthFlow) TableName() string { return "oauth_authorization_flows" }
+
+type OAuthLoginCode struct {
+	CodeHash  string
+	UserID    uuid.UUID
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+	CreatedAt time.Time
+}
+
+func (OAuthLoginCode) TableName() string { return "oauth_login_codes" }
+
+func (r *Repository) CreateOAuthFlow(ctx context.Context, flow *OAuthFlow) error {
+	return r.db.WithContext(ctx).Create(flow).Error
+}
+func (r *Repository) ConsumeOAuthFlow(ctx context.Context, hash string, now time.Time) (*OAuthFlow, error) {
+	var out OAuthFlow
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&out, "state_hash = ?", hash).Error; err != nil {
+			return err
+		}
+		if out.UsedAt != nil || !out.ExpiresAt.After(now) {
+			return errOAuthCodeInvalid
+		}
+		return tx.Model(&OAuthFlow{}).Where("state_hash = ? AND used_at IS NULL", hash).Update("used_at", now).Error
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errOAuthCodeInvalid
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+func (r *Repository) ResolveGoogleUser(ctx context.Context, subject, email, name, picture, username string, now time.Time) (*domain.User, error) {
+	var account domain.User
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var identity domain.OAuthIdentity
+		err := tx.Where("provider = 'google' AND provider_subject = ?", subject).First(&identity).Error
+		if err == nil {
+			return tx.First(&account, "id = ? AND deactivated_at IS NULL", identity.UserID).Error
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		err = tx.Where("lower(email) = ? AND deactivated_at IS NULL", strings.ToLower(email)).First(&account).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			account = domain.User{Email: strings.ToLower(email), Name: name, UserName: username, Picture: picture, IsVerified: true, Timezone: "UTC"}
+			if err = tx.Create(&account).Error; err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+		if !account.IsVerified {
+			if err := tx.Model(&domain.User{}).Where("id = ?", account.ID).Update("is_verified", true).Error; err != nil {
+				return err
+			}
+			account.IsVerified = true
+		}
+		return tx.Create(&domain.OAuthIdentity{UserID: account.ID, Provider: "google", ProviderSubject: subject, Email: strings.ToLower(email), CreatedAt: now}).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := r.db.WithContext(ctx).Preload("Roles").Preload("DietaryPreferences").First(&account, "id = ?", account.ID).Error; err != nil {
+		return nil, err
+	}
+	return &account, nil
+}
+func (r *Repository) CreateOAuthLoginCode(ctx context.Context, code *OAuthLoginCode) error {
+	return r.db.WithContext(ctx).Create(code).Error
+}
+func (r *Repository) ConsumeOAuthLoginCode(ctx context.Context, hash string, now time.Time) (*OAuthLoginCode, error) {
+	var out OAuthLoginCode
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&out, "code_hash = ?", hash).Error; err != nil {
+			return err
+		}
+		if out.UsedAt != nil || !out.ExpiresAt.After(now) {
+			return errOAuthCodeInvalid
+		}
+		return tx.Model(&OAuthLoginCode{}).Where("code_hash = ? AND used_at IS NULL", hash).Update("used_at", now).Error
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errOAuthCodeInvalid
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+var errOAuthCodeInvalid = errors.New("oauth code is invalid or expired")
 
 func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{

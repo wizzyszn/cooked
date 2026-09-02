@@ -20,7 +20,9 @@ func RequestLogger(zapLogger *zap.SugaredLogger) gin.HandlerFunc {
 
 		reqID, _ := ctx.Get(RequestIdKey)
 
-		zapLogger.Infow("http_request", "status", ctx.Writer.Status(), "method", ctx.Request.Method, "path", path, "latency_ms", time.Since(start).Milliseconds(), "client_ip", ctx.ClientIP(), "requestId", reqID, "erros", ctx.Errors.ByType(gin.ErrorTypePrivate))
+		if zapLogger != nil {
+			zapLogger.Infow("http_request", "status", ctx.Writer.Status(), "method", ctx.Request.Method, "path", path, "latency_ms", time.Since(start).Milliseconds(), "client_ip", ctx.ClientIP(), "request_id", reqID, "errors", ctx.Errors.ByType(gin.ErrorTypePrivate))
+		}
 
 	}
 }

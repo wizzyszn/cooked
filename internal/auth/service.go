@@ -100,7 +100,7 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 	s.enqueueVerificationEmail(ctx, account)
 
 	return &RegisterResponse{
-		User:    account.Sanitize(),
+		User:    user.ToPrivateProfile(account),
 		Message: "account created; check your email to confirm your address",
 	}, nil
 }
@@ -127,7 +127,7 @@ func (s *AuthService) VerifyEmail(ctx context.Context, rawToken string) (*Verify
 	}
 
 	return &VerifyEmailResponse{
-		User:    account.Sanitize(),
+		User:    user.ToPrivateProfile(account),
 		Message: "email confirmed",
 	}, nil
 }
@@ -177,10 +177,10 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 	if account == nil || !passwordMatches(storedHash, password) {
 		return nil, apperrors.ErrInvalidEmailOrPassword
 	}
-	if !account.IsVerified {
-		return nil, apperrors.ErrEmailNotVerified
-	}
+	return s.issueSession(ctx, account)
+}
 
+func (s *AuthService) issueSession(ctx context.Context, account *domain.User) (*LoginResponse, error) {
 	accessToken, accessExp, err := s.tokens.IssueAccessToken(account.ID, account.Email, account.IsVerified)
 	if err != nil {
 		return nil, apperrors.Internal(s.log, "issue access token", err, "user_id", account.ID)
@@ -205,7 +205,7 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 	}
 
 	return &LoginResponse{
-		User: account.Sanitize(),
+		User: user.ToPrivateProfile(account),
 		Tokens: &TokenPair{
 			AccessToken:       accessToken,
 			RefreshToken:      raw,
@@ -244,7 +244,7 @@ func (s *AuthService) Refresh(ctx context.Context, req *RefreshRequest) (*Refres
 	if err != nil {
 		return nil, apperrors.Internal(s.log, "account lookup by id", err, "user_id", row.UserID)
 	}
-	if account == nil {
+	if account == nil || account.DeactivatedAt != nil {
 		return nil, apperrors.ErrInvalidToken
 	}
 
