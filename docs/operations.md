@@ -27,6 +27,7 @@ Verify row counts for users, published Recipes/versions, completed Cook Sessions
 ## Queue and provider incidents
 
 - Rising queue age with no retries: confirm the worker unit, DB connectivity, leases, and clock synchronization.
+- The worker prunes `rate_limit_buckets` whose indexed `expires_at` value has passed on every cycle; request correctness does not depend on pruning.
 - Email provider failure: leave intent queued, validate Brevo credentials/status, and restart the worker. Stable notification IDs preserve provider idempotency.
 - Object provider failure: uploads stay private/quarantined. Restore S3 access before retrying; never make the bucket public.
 - Poison jobs stop after five attempts. Inspect `last_error`, correct the cause, then reschedule only the exact reviewed rows.

@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wizzyszn/cooked/internal/api/middlewares"
 	"github.com/wizzyszn/cooked/internal/config"
 	"github.com/wizzyszn/cooked/internal/cook"
 	"github.com/wizzyszn/cooked/internal/db"
@@ -38,6 +39,7 @@ func main() {
 		providers = append(providers, notify.NewBrevoEmailProvider(&cfg.Brevo, zapLogger))
 	}
 	var runners []jobRunner
+	runners = append(runners, middlewares.NewRateLimitCleaner(database))
 	runners = append(runners, cook.NewStreakProjector(database))
 	runners = append(runners, engagement.NewTrendProjector(database, cfg.Engagement), engagement.NewReminderWorker(database, cfg.Engagement.StreakReminderHour))
 	if len(providers) > 0 {

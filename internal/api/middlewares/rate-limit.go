@@ -47,3 +47,19 @@ func (rl *SharedRateLimiter) allow(ctx context.Context, kind, key string) bool {
 func (rl *SharedRateLimiter) Cleanup(ctx context.Context) error {
 	return rl.db.WithContext(ctx).Exec("DELETE FROM rate_limit_buckets WHERE expires_at<?", time.Now().UTC()).Error
 }
+
+// RateLimitCleaner removes logically expired shared buckets. Request handling
+// never depends on cleanup timing, but pruning bounds storage as client keys
+// change over time.
+type RateLimitCleaner struct {
+	db *gorm.DB
+}
+
+func NewRateLimitCleaner(db *gorm.DB) *RateLimitCleaner { return &RateLimitCleaner{db: db} }
+
+func (c *RateLimitCleaner) RunOnce(ctx context.Context) error {
+	if c == nil || c.db == nil {
+		return nil
+	}
+	return c.db.WithContext(ctx).Exec("DELETE FROM rate_limit_buckets WHERE expires_at < ?", time.Now().UTC()).Error
+}

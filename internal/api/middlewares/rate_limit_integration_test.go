@@ -32,6 +32,22 @@ func TestSharedRateLimiterPersistsAcrossInstances(t *testing.T) {
 		t.Fatalf("statuses=%d,%d", first.Code, second.Code)
 	}
 }
+
+func TestRateLimitCleanerOnlyRemovesExpiredBuckets(t *testing.T) {
+	database := rateLimitDB(t)
+	database.Exec(`INSERT INTO rate_limit_buckets(policy,subject_type,subject_key,window_started_at,request_count,expires_at) VALUES
+		('expired','network','old',now()-interval '2 minutes',1,now()-interval '1 minute'),
+		('active','network','current',now(),1,now()+interval '1 minute')`)
+	if err := NewRateLimitCleaner(database).RunOnce(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var expired, active int64
+	database.Model(&struct{ Policy string }{}).Table("rate_limit_buckets").Where("policy='expired'").Count(&expired)
+	database.Model(&struct{ Policy string }{}).Table("rate_limit_buckets").Where("policy='active'").Count(&active)
+	if expired != 0 || active != 1 {
+		t.Fatalf("expired=%d active=%d", expired, active)
+	}
+}
 func rateLimitDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	raw := os.Getenv("COOKED_TEST_DATABASE_URL")
