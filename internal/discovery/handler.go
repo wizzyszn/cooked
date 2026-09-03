@@ -143,3 +143,15 @@ func (h *Handler) Favorites(c *gin.Context) {
 	}
 	models.WriteAppError(c, e)
 }
+func (h *Handler) Trending(c *gin.Context) {
+	f, e := filters(c)
+	if e == nil {
+		var out RecipePage
+		out, e = h.service.Trending(c, f)
+		if e == nil {
+			models.WriteOk(c, out)
+			return
+		}
+	}
+	models.WriteAppError(c, e)
+}

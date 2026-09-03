@@ -70,7 +70,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [x] **M5:** Favorites, search, browse, and initial discovery.
 - [x] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
 - [x] **M7:** Version-specific Reviews and content reporting.
-- [ ] **M8:** Trending, notification preferences, and engagement automation.
+- [x] **M8:** Trending, notification preferences, and engagement automation.
 - [ ] **M9:** Launch hardening, migration cutover, and sign-off.
 
 The detailed milestone checklists below are authoritative. This summary is for at-a-glance progress only.
@@ -332,19 +332,19 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Backend/worker deliverables
 
-- [ ] Implement rolling seven-day trend projections using configurable defaults: cook `3`, Favorite `1`, Review `2`; deduplicate cooks per user/Recipe/local date.
-- [ ] Recompute incrementally from authoritative events and provide a full reconciliation job. Exclude all non-public/inaccessible content at read time even if a stale score exists.
-- [ ] Add Notification Preferences by category/channel, in-app list/unread count/mark-read endpoints, and email opt-in enforcement.
-- [ ] Add outbox producers for new Reviews, Dish/moderation outcomes, and streak-at-risk reminders.
-- [ ] Schedule the initial 19:00 local streak reminder once per user/local date and make retries idempotent.
-- [ ] Complete the product report with Review rate and cohort decision-gate status.
+- [x] Implement rolling seven-day trend projections using configurable defaults: cook `3`, Favorite `1`, Review `2`; deduplicate cooks per user/Recipe/local date.
+- [x] Recompute incrementally from authoritative events and provide a full reconciliation job. Exclude all non-public/inaccessible content at read time even if a stale score exists.
+- [x] Add Notification Preferences by category/channel, in-app list/unread count/mark-read endpoints, and email opt-in enforcement.
+- [x] Add outbox producers for new Reviews, Dish/moderation outcomes, and streak-at-risk reminders.
+- [x] Schedule the initial 19:00 local streak reminder once per user/local date and make retries idempotent.
+- [x] Complete the product report with Review rate and cohort decision-gate status.
 
 ### Exit gate
 
-- [ ] Trend scores reconcile from fixtures and age out correctly after seven days.
-- [ ] Preference defaults are in-app on/email off; transactional auth email bypasses optional preferences.
-- [ ] Worker restarts/retries do not duplicate reminders or activity notices.
-- [ ] Product dashboard numbers reconcile with direct database queries for a frozen test dataset.
+- [x] Trend scores reconcile from fixtures and age out correctly after seven days.
+- [x] Preference defaults are in-app on/email off; transactional auth email bypasses optional preferences.
+- [x] Worker restarts/retries do not duplicate reminders or activity notices.
+- [x] Product dashboard numbers reconcile with direct database queries for a frozen test dataset.
 
 ---
 

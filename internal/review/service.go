@@ -2,16 +2,15 @@ package review
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/domain"
+	"github.com/wizzyszn/cooked/internal/notify"
 	"github.com/wizzyszn/cooked/internal/platform"
 	apperrors "github.com/wizzyszn/cooked/pkg/errors"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -89,7 +88,7 @@ func (s *Service) Create(ctx context.Context, actor, versionID uuid.UUID, key st
 		if err := recompute(tx, versionID); err != nil {
 			return err
 		}
-		return inApp(tx, row.AuthorID, "new_review", map[string]any{"review_id": out.ID, "recipe_id": row.RecipeID})
+		return notify.PersistOptional(ctx, tx, row.AuthorID, "activity", "new_review", "new-review:"+out.ID.String(), map[string]any{"review_id": out.ID, "recipe_id": row.RecipeID})
 	})
 	return &out, err
 }
@@ -187,9 +186,4 @@ func accessible(tx *gorm.DB, recipeID uuid.UUID, viewer *uuid.UUID, staff bool) 
 		return false, nil
 	}
 	return staff || (viewer != nil && *viewer == row.UserID) || row.Visibility == "public" || row.Visibility == "unlisted", nil
-}
-
-func inApp(tx *gorm.DB, user uuid.UUID, template string, payload map[string]any) error {
-	b, _ := json.Marshal(payload)
-	return tx.Exec("INSERT INTO notifications(id,user_id,channel,template,payload_json,status,created_at,updated_at,next_attempt_at) VALUES (gen_random_uuid(),?,'in_app',?,?,'sent',now(),now(),now())", user, template, datatypes.JSON(b)).Error
 }

@@ -38,8 +38,12 @@ type Metrics struct {
 	CompletedSessions         int64     `json:"completed_sessions"`
 	CookModeConversion        float64   `json:"cook_mode_conversion"`
 	ReviewEligibleCompletions int64     `json:"review_eligible_completions"`
+	ReviewCount               int64     `json:"review_count"`
+	ReviewRate                float64   `json:"review_rate"`
 	ActivatedCohortsMatured   int64     `json:"activated_cohorts_matured"`
 	SevenDayReturners         int64     `json:"seven_day_returners"`
 	SevenDayRetention         float64   `json:"seven_day_retention"`
+	RetentionGateReady        bool      `json:"retention_gate_ready"`
+	RetentionTargetMet        bool      `json:"retention_target_met"`
 	GeneratedAt               time.Time `json:"generated_at"`
 }

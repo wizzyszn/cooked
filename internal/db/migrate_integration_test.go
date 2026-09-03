@@ -85,6 +85,7 @@ func TestMigrationLifecycle(t *testing.T) {
 	assertM5DiscoveryIndexes(t, database)
 	assertM6CookSchema(t, database)
 	assertM7ReviewSchema(t, database)
+	assertM8EngagementSchema(t, database)
 
 	if err := MigrateSteps(database, -1); err != nil {
 		t.Fatalf("roll back latest migration: %v", err)
@@ -107,6 +108,16 @@ func TestMigrationLifecycle(t *testing.T) {
 		t.Fatalf("migrate empty schema to latest: %v", err)
 	}
 	assertMigrationVersion(t, database, LatestMigrationVersion)
+}
+
+func assertM8EngagementSchema(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	for _, table := range []string{"recipe_trend_scores", "trend_projection_queue", "notification_preferences"} {
+		var exists bool
+		if err := database.Raw("SELECT to_regclass(?) IS NOT NULL", table).Scan(&exists).Error; err != nil || !exists {
+			t.Fatalf("M8 table %s missing: exists=%t err=%v", table, exists, err)
+		}
+	}
 }
 
 func assertM7ReviewSchema(t *testing.T, database *gorm.DB) {

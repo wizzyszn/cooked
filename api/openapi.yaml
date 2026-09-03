@@ -614,6 +614,12 @@ paths:
       operationId: listRecentDishes
       parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
       responses: {"200": {description: Recently approved public Dishes.}}
+  /discovery/trending:
+    get:
+      tags: [Discovery]
+      operationId: listTrendingRecipes
+      parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
+      responses: {"200": {description: Public Recipes ranked by configurable rolling seven-day cook, Favorite, and Review signals.}}
   /discovery/recommendations:
     get:
       tags: [Discovery]
@@ -628,6 +634,41 @@ paths:
       security: [{bearerAuth: []}]
       parameters: [{$ref: "#/components/parameters/Cursor"}, {$ref: "#/components/parameters/Limit"}]
       responses: {"200": {description: Accessible saved Recipes; inaccessible saves disclose no metadata.}}
+  /users/me/notification-preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Activity and streak preferences with effective per-channel defaults.}}
+    put:
+      tags: [Notifications]
+      operationId: setNotificationPreference
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category, channel, enabled]
+              properties:
+                category: {type: string, enum: [activity, streak]}
+                channel: {type: string, enum: [in_app, email]}
+                enabled: {type: boolean}
+      responses: {"204": {description: Preference replaced.}}
+  /users/me/notifications:
+    get:
+      tags: [Notifications]
+      operationId: listInAppNotifications
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Current user's in-app inbox and unread count.}}
+  /users/me/notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {"204": {description: Owned in-app notification marked read.}, "404": {description: Notification not found for current user.}}
   /recipes/{id}/favorite:
     put:
       tags: [Discovery]
@@ -711,7 +752,7 @@ paths:
       tags: [Analytics]
       operationId: getProductMetrics
       security: [{bearerAuth: []}]
-      responses: {"200": {description: Activation, conversion, eligibility placeholder, and matured seven-day retention metrics.}}
+      responses: {"200": {description: Activation, conversion, Review rate, matured seven-day retention, and 100-cohort/25-percent decision-gate metrics.}}
 components:
   securitySchemes:
     bearerAuth:

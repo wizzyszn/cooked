@@ -17,7 +17,10 @@ type Config struct {
 	ObjectStorage ObjectStorageConfig
 	Worker        WorkerConfig
 	Cook          CookConfig
+	Engagement    EngagementConfig
 }
+
+type EngagementConfig struct{ TrendCookWeight, TrendFavoriteWeight, TrendReviewWeight, TrendWindowDays, StreakReminderHour int }
 
 type CookConfig struct {
 	BaseXP                int
@@ -148,7 +151,8 @@ func Load() (*Config, error) {
 		Worker: WorkerConfig{
 			ID: viper.GetString("WORKER_ID"), PollIntervalMS: viper.GetInt("WORKER_POLL_INTERVAL_MS"), BatchSize: viper.GetInt("WORKER_BATCH_SIZE"),
 		},
-		Cook: CookConfig{BaseXP: viper.GetInt("COOK_BASE_XP"), PhotoXP: viper.GetInt("COOK_PHOTO_XP"), FirstDishXP: viper.GetInt("COOK_FIRST_DISH_XP"), DailyRewardedSessions: viper.GetInt("COOK_DAILY_REWARDED_SESSIONS")},
+		Cook:       CookConfig{BaseXP: viper.GetInt("COOK_BASE_XP"), PhotoXP: viper.GetInt("COOK_PHOTO_XP"), FirstDishXP: viper.GetInt("COOK_FIRST_DISH_XP"), DailyRewardedSessions: viper.GetInt("COOK_DAILY_REWARDED_SESSIONS")},
+		Engagement: EngagementConfig{TrendCookWeight: viper.GetInt("TREND_COOK_WEIGHT"), TrendFavoriteWeight: viper.GetInt("TREND_FAVORITE_WEIGHT"), TrendReviewWeight: viper.GetInt("TREND_REVIEW_WEIGHT"), TrendWindowDays: viper.GetInt("TREND_WINDOW_DAYS"), StreakReminderHour: viper.GetInt("STREAK_REMINDER_HOUR")},
 	}
 	setDefaultConfigs(cfg)
 	err := validateConfigs(cfg)
@@ -224,6 +228,21 @@ func setDefaultConfigs(cfg *Config) {
 	if cfg.Worker.BatchSize == 0 {
 		cfg.Worker.BatchSize = 20
 	}
+	if cfg.Engagement.TrendCookWeight == 0 {
+		cfg.Engagement.TrendCookWeight = 3
+	}
+	if cfg.Engagement.TrendFavoriteWeight == 0 {
+		cfg.Engagement.TrendFavoriteWeight = 1
+	}
+	if cfg.Engagement.TrendReviewWeight == 0 {
+		cfg.Engagement.TrendReviewWeight = 2
+	}
+	if cfg.Engagement.TrendWindowDays == 0 {
+		cfg.Engagement.TrendWindowDays = 7
+	}
+	if cfg.Engagement.StreakReminderHour == 0 {
+		cfg.Engagement.StreakReminderHour = 19
+	}
 
 }
 
@@ -252,6 +271,9 @@ func validateConfigs(cfg *Config) error {
 	}
 	if cfg.Cook.BaseXP < 1 || cfg.Cook.PhotoXP < 1 || cfg.Cook.FirstDishXP < 1 || cfg.Cook.DailyRewardedSessions < 1 {
 		return fmt.Errorf("Cook reward values must be positive")
+	}
+	if cfg.Engagement.TrendCookWeight < 0 || cfg.Engagement.TrendFavoriteWeight < 0 || cfg.Engagement.TrendReviewWeight < 0 || cfg.Engagement.TrendWindowDays < 1 || cfg.Engagement.StreakReminderHour < 0 || cfg.Engagement.StreakReminderHour > 23 {
+		return fmt.Errorf("engagement configuration is invalid")
 	}
 	return nil
 }

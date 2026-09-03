@@ -142,3 +142,20 @@ func (r *Repository) Preferences(ctx context.Context, userID uuid.UUID) ([]strin
 	err := r.db.WithContext(ctx).Raw("SELECT dt.slug FROM user_dietary_preferences udp JOIN dietary_tags dt ON dt.id=udp.dietary_tag_id AND dt.active=true WHERE udp.user_id=?", userID).Scan(&out).Error
 	return out, err
 }
+
+func (r *Repository) Trending(ctx context.Context, f Filters) ([]RecipeCard, error) {
+	q := `SELECT r.id recipe_id,v.id version_id,v.title,v.summary,v.difficulty::text difficulty,v.prep_time_seconds prep_seconds,v.cook_time_seconds cook_seconds,v.published_at,d.id delicacy_id,d.name delicacy_name,c.slug category_slug,to_timestamp(t.score) cursor_at,r.id cursor_id,t.score trend_score,COALESCE((SELECT array_agg(tag.slug ORDER BY tag.slug) FROM recipe_version_tags rvt JOIN tags tag ON tag.id=rvt.tag_id WHERE rvt.recipe_version_id=v.id AND tag.kind='diet'),'{}') dietary_tags FROM recipe_trend_scores t JOIN recipes r ON r.id=t.recipe_id JOIN recipe_versions v ON v.id=r.current_published_version_id AND v.lifecycle='published' JOIN delicacies d ON d.id=r.delicacy_id AND d.status='published' AND d.deleted_at IS NULL LEFT JOIN categories c ON c.id=d.category_id WHERE t.score>0 AND r.visibility='public' AND r.moderation_status='visible' AND r.deleted_at IS NULL`
+	args := []any{}
+	if f.Cursor != "" {
+		cursor, err := platform.DecodeCursor(f.Cursor)
+		if err != nil {
+			return nil, err
+		}
+		q += " AND (t.score,r.id)<(?,?)"
+		args = append(args, cursor.Timestamp.Unix(), cursor.ID)
+	}
+	args = append(args, f.Limit+1)
+	var out []RecipeCard
+	err := r.db.WithContext(ctx).Raw(q+" ORDER BY t.score DESC,r.id DESC LIMIT ?", args...).Scan(&out).Error
+	return out, err
+}

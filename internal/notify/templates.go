@@ -74,6 +74,14 @@ func Render(template string, payload map[string]any) *Rendered {
 				"",
 			),
 		}
+	case "new_review":
+		return &Rendered{Title: "Your recipe has a new Review", Body: "Someone who cooked your recipe left a Review.", HTML: emailHTML("New Review", "Hello,", "Someone who cooked your recipe left a Review.", "", "")}
+	case "dish_moderation_outcome":
+		return &Rendered{Title: "Your Dish submission was reviewed", Body: "A moderator has reviewed your Dish submission.", HTML: emailHTML("Dish reviewed", "Hello,", "A moderator has reviewed your Dish submission.", "", "")}
+	case "moderation_outcome":
+		return &Rendered{Title: "A moderation decision was made", Body: "A moderator has made a decision about your content.", HTML: emailHTML("Moderation update", "Hello,", "A moderator has made a decision about your content.", "", "")}
+	case "streak_at_risk":
+		return &Rendered{Title: "Keep your cooking streak going", Body: "Cook something today to keep your streak going.", HTML: emailHTML("Your streak is at risk", "Hello,", "Cook something today to keep your streak going.", "", "")}
 	default:
 		return nil
 	}

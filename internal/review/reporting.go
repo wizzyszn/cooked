@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/domain"
+	"github.com/wizzyszn/cooked/internal/notify"
 	"github.com/wizzyszn/cooked/internal/platform"
 	apperrors "github.com/wizzyszn/cooked/pkg/errors"
 	"gorm.io/gorm"
@@ -151,6 +152,6 @@ func (s *Service) Moderate(ctx context.Context, actor, reportID uuid.UUID, q Mod
 		if err = tx.Create(&domain.AuditLog{ActorID: &actor, Action: q.Action, TargetType: report.TargetType, TargetID: &report.TargetID, Reason: q.Reason, BeforeJSON: beforeJSON, AfterJSON: afterJSON}).Error; err != nil {
 			return err
 		}
-		return inApp(tx, authorID, "moderation_outcome", map[string]any{"target_type": report.TargetType, "target_id": report.TargetID, "action": q.Action, "reason": q.Reason})
+		return notify.PersistOptional(ctx, tx, authorID, "activity", "moderation_outcome", "moderation:"+report.TargetType+":"+report.TargetID.String()+":"+q.Action, map[string]any{"target_type": report.TargetType, "target_id": report.TargetID, "action": q.Action, "reason": q.Reason})
 	})
 }

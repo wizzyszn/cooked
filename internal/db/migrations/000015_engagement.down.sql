@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_notifications_in_app_unread;
+DROP INDEX IF EXISTS uq_notifications_intent;
+ALTER TABLE notifications DROP COLUMN IF EXISTS idempotency_key, DROP COLUMN IF EXISTS read_at, DROP COLUMN IF EXISTS category;
+DROP TABLE IF EXISTS notification_preferences;
+DROP TRIGGER IF EXISTS trg_review_trend_refresh ON reviews;
+DROP TRIGGER IF EXISTS trg_cook_trend_refresh ON cook_sessions;
+DROP TRIGGER IF EXISTS trg_favorite_trend_refresh ON favorites;
+DROP FUNCTION IF EXISTS queue_recipe_trend_refresh();
+DROP TABLE IF EXISTS trend_projection_queue;
+DROP TABLE IF EXISTS recipe_trend_scores;

@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/wizzyszn/cooked/internal/db"
 	"github.com/wizzyszn/cooked/internal/domain"
+	"github.com/wizzyszn/cooked/internal/notify"
 	apperrors "github.com/wizzyszn/cooked/pkg/errors"
 	"go.uber.org/zap"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"net/http"
 	"regexp"
@@ -188,8 +188,7 @@ func (s *Service) transition(ctx context.Context, id, actor uuid.UUID, status do
 				return e
 			}
 			if d.CreatedBy != nil {
-				payload, _ := json.Marshal(map[string]any{"dish_id": id, "dish_name": d.Name, "outcome": status, "reason": reason})
-				return tx.WithContext(ctx).Create(&domain.Notification{UserID: *d.CreatedBy, Channel: domain.NotificationChannelInApp, Template: "dish_moderation_outcome", PayloadJSON: datatypes.JSON(payload), Status: domain.NotificationStatusPending, NextAttemptAt: now}).Error
+				return notify.PersistOptional(ctx, tx, *d.CreatedBy, "activity", "dish_moderation_outcome", "dish-moderation:"+id.String()+":"+string(status), map[string]any{"dish_id": id, "dish_name": d.Name, "outcome": status, "reason": reason})
 			}
 		}
 		return nil

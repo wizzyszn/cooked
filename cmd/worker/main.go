@@ -10,6 +10,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/config"
 	"github.com/wizzyszn/cooked/internal/cook"
 	"github.com/wizzyszn/cooked/internal/db"
+	"github.com/wizzyszn/cooked/internal/engagement"
 	"github.com/wizzyszn/cooked/internal/logger"
 	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/notify"
@@ -38,6 +39,7 @@ func main() {
 	}
 	var runners []jobRunner
 	runners = append(runners, cook.NewStreakProjector(database))
+	runners = append(runners, engagement.NewTrendProjector(database, cfg.Engagement), engagement.NewReminderWorker(database, cfg.Engagement.StreakReminderHour))
 	if len(providers) > 0 {
 		runners = append(runners, notify.NewWorker(notificationStore, users, providers, cfg.Worker.ID, cfg.Worker.BatchSize, zapLogger))
 	} else {

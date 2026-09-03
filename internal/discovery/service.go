@@ -158,3 +158,16 @@ func (s *Service) Favorites(ctx context.Context, userID uuid.UUID, f Filters) (R
 	}
 	return recipePage(items, f.Limit)
 }
+
+func (s *Service) Trending(ctx context.Context, f Filters) (RecipePage, error) {
+	f.Query = ""
+	f, err := normalizeFilters(f)
+	if err != nil {
+		return RecipePage{}, err
+	}
+	items, err := s.repo.Trending(ctx, f)
+	if err != nil {
+		return RecipePage{}, err
+	}
+	return recipePage(items, f.Limit)
+}

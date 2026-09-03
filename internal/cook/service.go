@@ -445,7 +445,11 @@ func (s *Service) Metrics(ctx context.Context) (Metrics, error) {
 	}
 	q.Raw("SELECT count(*) FROM analytics_events WHERE event_name='cook_mode_entered'").Scan(&m.CookModeEntries)
 	q.Raw("SELECT count(*) FROM cook_sessions WHERE status='completed'").Scan(&m.CompletedSessions)
-	m.ReviewEligibleCompletions = m.CompletedSessions
+	q.Raw(`SELECT count(*) FROM (SELECT DISTINCT cs.user_id,cs.recipe_version_id FROM cook_sessions cs JOIN recipes r ON r.id=cs.recipe_id WHERE cs.status='completed' AND cs.user_id<>r.user_id) eligible`).Scan(&m.ReviewEligibleCompletions)
+	q.Raw("SELECT count(*) FROM reviews").Scan(&m.ReviewCount)
+	if m.ReviewEligibleCompletions > 0 {
+		m.ReviewRate = float64(m.ReviewCount) / float64(m.ReviewEligibleCompletions)
+	}
 	if m.CookModeEntries > 0 {
 		m.CookModeConversion = float64(m.CompletedSessions) / float64(m.CookModeEntries)
 	}
@@ -455,6 +459,8 @@ func (s *Service) Metrics(ctx context.Context) (Metrics, error) {
 	if m.ActivatedCohortsMatured > 0 {
 		m.SevenDayRetention = float64(m.SevenDayReturners) / float64(m.ActivatedCohortsMatured)
 	}
+	m.RetentionGateReady = m.ActivatedCohortsMatured >= 100
+	m.RetentionTargetMet = m.RetentionGateReady && m.SevenDayRetention >= 0.25
 	return m, nil
 }
 

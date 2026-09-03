@@ -35,6 +35,7 @@ type RecipeCard struct {
 	DietaryTags  pq.StringArray `gorm:"type:text[]" json:"dietary_tags,omitempty"`
 	CursorAt     time.Time      `json:"-"`
 	CursorID     uuid.UUID      `json:"-"`
+	TrendScore   int            `json:"trend_score,omitempty"`
 }
 
 type DishCard struct {

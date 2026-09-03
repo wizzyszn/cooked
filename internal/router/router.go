@@ -10,6 +10,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/delicacy"
 	"github.com/wizzyszn/cooked/internal/discovery"
 	"github.com/wizzyszn/cooked/internal/domain"
+	"github.com/wizzyszn/cooked/internal/engagement"
 	"github.com/wizzyszn/cooked/internal/health"
 	"github.com/wizzyszn/cooked/internal/media"
 	"github.com/wizzyszn/cooked/internal/recipe"
@@ -116,10 +117,16 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	v1.GET("/search", discoveryHandler.Search)
 	v1.GET("/browse/dishes", discoveryHandler.Browse)
 	v1.GET("/discovery/recent-dishes", discoveryHandler.Recent)
+	v1.GET("/discovery/trending", discoveryHandler.Trending)
 	authed.GET("/discovery/recommendations", discoveryHandler.Recommendations)
 	authed.GET("/users/me/favorites", discoveryHandler.Favorites)
 	authed.PUT("/recipes/:id/favorite", discoveryHandler.Save)
 	authed.DELETE("/recipes/:id/favorite", discoveryHandler.Unsave)
+	notificationHandler := engagement.NewNotificationHandler(deps.NotificationService)
+	authed.GET("/users/me/notification-preferences", notificationHandler.Preferences)
+	authed.PUT("/users/me/notification-preferences", notificationHandler.SetPreference)
+	authed.GET("/users/me/notifications", notificationHandler.Inbox)
+	authed.POST("/users/me/notifications/:id/read", notificationHandler.MarkRead)
 	cookHandler := cook.NewHandler(deps.CookService)
 	v1.POST("/analytics/events", middlewares.OptionalAuth(deps.Tokens, deps.Users), cookHandler.Ingest)
 	authed.POST("/cook-sessions", cookHandler.Start)

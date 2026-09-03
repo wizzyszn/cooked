@@ -246,6 +246,20 @@ func TestSevenDayRetentionReconcilesFromSessions(t *testing.T) {
 	}
 }
 
+func TestProductReviewMetricsReconcile(t *testing.T) {
+	database := cookDB(t)
+	author := seedCookUser(t, database, "metrics-author", "UTC")
+	cookUser := seedCookUser(t, database, "metrics-cook", "UTC")
+	r := seedCookRecipe(t, database, author, uuid.New())
+	mustCook(t, database, "INSERT INTO cook_sessions(user_id,recipe_id,recipe_version_id,status,completed_at,completion_local_date,completion_timezone) VALUES (?,?,?,'completed',now(),current_date,'UTC'),(?,?,?,'completed',now(),current_date,'UTC')", cookUser, r.recipe, r.version, cookUser, r.recipe, r.version)
+	mustCook(t, database, "INSERT INTO reviews(user_id,recipe_id,recipe_version_id,taste,clarity,difficulty_accuracy,moderation_status) VALUES (?,?,?,5,4,5,'visible')", cookUser, r.recipe, r.version)
+	svc := NewService(NewRepository(database))
+	metrics, err := svc.Metrics(t.Context())
+	if err != nil || metrics.ReviewEligibleCompletions != 1 || metrics.ReviewCount != 1 || metrics.ReviewRate != 1 || metrics.RetentionGateReady || metrics.RetentionTargetMet {
+		t.Fatalf("metrics=%#v err=%v", metrics, err)
+	}
+}
+
 type mutableClock struct{ now time.Time }
 
 func (c *mutableClock) Now() time.Time { return c.now }

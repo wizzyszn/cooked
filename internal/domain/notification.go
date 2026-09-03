@@ -24,18 +24,21 @@ const (
 
 type Notification struct {
 	BaseModel
-	UserID        uuid.UUID           `gorm:"type:uuid;not null;index" json:"user_id"`
-	Channel       NotificationChannel `gorm:"size:16;not null;default:'email'" json:"channel"`
-	Template      string              `gorm:"size:64;not null" json:"template"`
-	PayloadJSON   datatypes.JSON      `gorm:"type:jsonb;column:payload_json" json:"payload"`
-	Status        NotificationStatus  `gorm:"size:16;not null;default:'pending'" json:"status"`
-	ExternalRef   *string             `gorm:"size:255" json:"external_ref,omitempty"`
-	AttemptCount  int                 `json:"-"`
-	NextAttemptAt time.Time           `json:"-"`
-	LockedAt      *time.Time          `json:"-"`
-	LockedBy      *string             `json:"-"`
-	LastError     *string             `json:"-"`
-	SentAt        *time.Time          `json:"sent_at,omitempty"`
+	UserID         uuid.UUID           `gorm:"type:uuid;not null;index" json:"user_id"`
+	Channel        NotificationChannel `gorm:"size:16;not null;default:'email'" json:"channel"`
+	Template       string              `gorm:"size:64;not null" json:"template"`
+	Category       string              `gorm:"size:16;not null;default:transactional" json:"category"`
+	PayloadJSON    datatypes.JSON      `gorm:"type:jsonb;column:payload_json" json:"payload"`
+	Status         NotificationStatus  `gorm:"size:16;not null;default:'pending'" json:"status"`
+	ExternalRef    *string             `gorm:"size:255" json:"external_ref,omitempty"`
+	AttemptCount   int                 `json:"-"`
+	NextAttemptAt  time.Time           `json:"-"`
+	LockedAt       *time.Time          `json:"-"`
+	LockedBy       *string             `json:"-"`
+	LastError      *string             `json:"-"`
+	SentAt         *time.Time          `json:"sent_at,omitempty"`
+	ReadAt         *time.Time          `json:"read_at,omitempty"`
+	IdempotencyKey *string             `gorm:"size:255" json:"-"`
 }
 
 type NotificationDeliveryAttempt struct {
