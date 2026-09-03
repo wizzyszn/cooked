@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Cooked API
-  version: 1.0.0-m2
+  version: 1.0.0
   description: Contract for the Cooked v1 API. Product behavior is defined in product-frd.md.
 servers:
   - url: /api/v1
@@ -11,8 +11,13 @@ tags:
   - name: Profiles
   - name: Administration
   - name: Media
+  - name: Dishes
+  - name: Recipes
   - name: Discovery
   - name: Cook Mode
+  - name: Reviews
+  - name: Notifications
+  - name: Moderation
   - name: Analytics
 paths:
   /health/live:

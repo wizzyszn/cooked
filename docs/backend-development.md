@@ -92,3 +92,7 @@ sudo systemctl status cooked-worker.service
 ## Launch operations
 
 Production configuration, error contracts, security evidence, migration/cutover checkpoints, backup restoration, provider incidents, and release conditions are maintained in [environment.md](environment.md), [error-codes.md](error-codes.md), [security-review.md](security-review.md), [operations.md](operations.md), and [release-signoff.md](release-signoff.md).
+
+## Swagger UI
+
+With the API running, open `http://localhost:8080/docs/`. The UI loads the exact OpenAPI contract embedded in the binary from `/docs/openapi.yaml`, supports bearer-token authorization, and enables “Try it out” requests against `/api/v1`. Documentation, health, and metrics routes do not consume the global API rate-limit budget; requests sent from the UI still do.

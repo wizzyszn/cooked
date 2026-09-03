@@ -16,6 +16,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/observability"
 	"github.com/wizzyszn/cooked/internal/recipe"
 	"github.com/wizzyszn/cooked/internal/review"
+	"github.com/wizzyszn/cooked/internal/swagger"
 	"github.com/wizzyszn/cooked/internal/user"
 )
 
@@ -36,14 +37,17 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	metrics := observability.NewRegistry()
 	r.Use(metrics.Middleware())
 	r.Use(middlewares.RequestLogger(deps.Logger))
-	r.Use(middlewares.NewSharedRateLimiter(deps.Database, "global", deps.Config.RateLimits.Global, false).Limit)
 
 	healthHandler := health.NewHandler(deps.Database, db.LatestMigrationVersion)
 	r.GET("/health/live", healthHandler.Live)
 	r.GET("/health/ready", healthHandler.Ready)
 	r.GET("/metrics", metrics.Handler(deps.Database))
+	swagger.Register(r)
 
-	v1 := r.Group("/api/v1")
+	// Operational and documentation routes stay reachable when an API client
+	// exhausts its shared budget. Requests made through Swagger's "Try it out"
+	// still target /api/v1 and therefore pass through this limiter.
+	v1 := r.Group("/api/v1", middlewares.NewSharedRateLimiter(deps.Database, "global", deps.Config.RateLimits.Global, false).Limit)
 	authG := v1.Group("/auth")
 	authHandler := auth.NewAuthHandler(deps.AuthService)
 	googleHandler := auth.NewGoogleHandler(deps.GoogleService)
