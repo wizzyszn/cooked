@@ -13,6 +13,7 @@ import (
 	"github.com/wizzyszn/cooked/internal/engagement"
 	"github.com/wizzyszn/cooked/internal/health"
 	"github.com/wizzyszn/cooked/internal/media"
+	"github.com/wizzyszn/cooked/internal/observability"
 	"github.com/wizzyszn/cooked/internal/recipe"
 	"github.com/wizzyszn/cooked/internal/review"
 	"github.com/wizzyszn/cooked/internal/user"
@@ -32,12 +33,15 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	}
 	r.Use(gin.Recovery())
 	r.Use(middlewares.RequestId())
+	metrics := observability.NewRegistry()
+	r.Use(metrics.Middleware())
 	r.Use(middlewares.RequestLogger(deps.Logger))
-	r.Use(middlewares.NewRateLimiter(100).Limit)
+	r.Use(middlewares.NewSharedRateLimiter(deps.Database, "global", deps.Config.RateLimits.Global, false).Limit)
 
 	healthHandler := health.NewHandler(deps.Database, db.LatestMigrationVersion)
 	r.GET("/health/live", healthHandler.Live)
 	r.GET("/health/ready", healthHandler.Ready)
+	r.GET("/metrics", metrics.Handler(deps.Database))
 
 	v1 := r.Group("/api/v1")
 	authG := v1.Group("/auth")
@@ -49,11 +53,11 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	{
 		authG.POST("/register", authHandler.Register)
 		authG.GET("/verify-email", authHandler.VerifyEmail)
-		authG.POST("/login", middlewares.NewRateLimiter(5).Limit, authHandler.Login)
+		authG.POST("/login", middlewares.NewSharedRateLimiter(deps.Database, "auth.login", deps.Config.RateLimits.Auth, false).Limit, authHandler.Login)
 		authG.POST("/refresh", authHandler.Refresh)
 		authG.POST("/logout", authHandler.Logout)
-		authG.POST("/forgot-password", middlewares.NewRateLimiter(5).Limit, authHandler.ForgotPassword)
-		authG.POST("/reset-password", middlewares.NewRateLimiter(5).Limit, authHandler.ResetPassword)
+		authG.POST("/forgot-password", middlewares.NewSharedRateLimiter(deps.Database, "auth.forgot", deps.Config.RateLimits.Auth, false).Limit, authHandler.ForgotPassword)
+		authG.POST("/reset-password", middlewares.NewSharedRateLimiter(deps.Database, "auth.reset", deps.Config.RateLimits.Auth, false).Limit, authHandler.ResetPassword)
 		authG.POST("/google/start", googleHandler.Start)
 		authG.GET("/google/callback", googleHandler.Callback)
 		authG.POST("/google/exchange", googleHandler.Exchange)
@@ -73,7 +77,7 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	if deps.MediaService != nil {
 		mediaHandler := media.NewHandler(deps.MediaService)
 		v1.GET("/media/:id", middlewares.OptionalAuth(deps.Tokens, deps.Users), mediaHandler.PublicGet)
-		authed.POST("/media/uploads", mediaHandler.Initialize)
+		authed.POST("/media/uploads", middlewares.NewSharedRateLimiter(deps.Database, "media.upload", deps.Config.RateLimits.MediaUpload, true).Limit, mediaHandler.Initialize)
 		authed.POST("/media/:id/complete", mediaHandler.Complete)
 		authed.GET("/media/:id/access", mediaHandler.OwnerGet)
 	}
@@ -88,7 +92,7 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	v1.GET("/taxonomies", delicacyHandler.Taxonomies)
 	verified := delicacyG.Group("", reqAuthM, middlewares.RequireVerified())
 	{
-		verified.POST("", delicacyHandler.Create(false))
+		verified.POST("", middlewares.NewSharedRateLimiter(deps.Database, "dish.submit", deps.Config.RateLimits.DishSubmission, true).Limit, delicacyHandler.Create(false))
 		verified.PATCH("/:id", delicacyHandler.Edit)
 		verified.POST("/:id/withdraw", delicacyHandler.Withdraw)
 	}
@@ -110,7 +114,7 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	recipeAuthor.POST("", recipeHandler.Create)
 	recipeAuthor.GET("/:id/draft", recipeHandler.Draft)
 	recipeAuthor.PUT("/:id/draft", recipeHandler.Update)
-	recipeAuthor.POST("/:id/publish", middlewares.RequireVerified(), recipeHandler.Publish)
+	recipeAuthor.POST("/:id/publish", middlewares.RequireVerified(), middlewares.NewSharedRateLimiter(deps.Database, "recipe.publish", deps.Config.RateLimits.RecipePublication, true).Limit, recipeHandler.Publish)
 	recipeAuthor.PATCH("/:id/visibility", recipeHandler.Visibility)
 	recipeAuthor.DELETE("/:id", recipeHandler.Delete)
 	discoveryHandler := discovery.NewHandler(deps.DiscoveryService)
@@ -136,15 +140,15 @@ func Init(deps *app.Dependencies) *gin.Engine {
 	authed.POST("/cook-sessions/:id/steps/:stepId/visit", cookHandler.Visit)
 	authed.PUT("/cook-sessions/:id/steps/:stepId/timer", cookHandler.Timer)
 	authed.POST("/cook-sessions/:id/abandon", cookHandler.Abandon)
-	authed.POST("/cook-sessions/:id/complete", cookHandler.Complete)
+	authed.POST("/cook-sessions/:id/complete", middlewares.NewSharedRateLimiter(deps.Database, "cook.complete", deps.Config.RateLimits.CookCompletion, true).Limit, cookHandler.Complete)
 	staff.GET("/metrics/product", cookHandler.Metrics)
 	reviewHandler := review.NewHandler(deps.ReviewService)
 	v1.GET("/reviews/:id", middlewares.OptionalAuth(deps.Tokens, deps.Users), reviewHandler.Get)
 	v1.GET("/recipe-versions/:id/reviews", middlewares.OptionalAuth(deps.Tokens, deps.Users), reviewHandler.List)
 	verifiedReviews := v1.Group("", reqAuthM, middlewares.RequireVerified())
-	verifiedReviews.POST("/recipe-versions/:id/reviews", reviewHandler.Create)
+	verifiedReviews.POST("/recipe-versions/:id/reviews", middlewares.NewSharedRateLimiter(deps.Database, "review.create", deps.Config.RateLimits.Review, true).Limit, reviewHandler.Create)
 	verifiedReviews.PATCH("/reviews/:id", reviewHandler.Edit)
-	verifiedReviews.POST("/reports", reviewHandler.Report)
+	verifiedReviews.POST("/reports", middlewares.NewSharedRateLimiter(deps.Database, "report.create", deps.Config.RateLimits.Report, true).Limit, reviewHandler.Report)
 	staff.GET("/reports", reviewHandler.Queue)
 	staff.POST("/reports/:id/decision", reviewHandler.Moderate)
 	return r

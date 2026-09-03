@@ -88,3 +88,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now cooked-worker.service
 sudo systemctl status cooked-worker.service
 ```
+
+## Launch operations
+
+Production configuration, error contracts, security evidence, migration/cutover checkpoints, backup restoration, provider incidents, and release conditions are maintained in [environment.md](environment.md), [error-codes.md](error-codes.md), [security-review.md](security-review.md), [operations.md](operations.md), and [release-signoff.md](release-signoff.md).

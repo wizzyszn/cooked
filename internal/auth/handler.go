@@ -95,7 +95,6 @@ func (h *AuthHandler) LogoutAll(ctx *gin.Context) {
 		return
 	}
 
-	// Set by RequireAuth middleware (ContextUserID = "userID").
 	userIDStr := ctx.GetString("userID")
 	if userIDStr == "" {
 		models.WriteAppError(ctx, errors.ErrUnauthorized)

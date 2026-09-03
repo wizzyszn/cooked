@@ -1,86 +1,49 @@
 package middlewares
 
 import (
-	"sync"
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	apperrors "github.com/wizzyszn/cooked/pkg/errors"
 	"github.com/wizzyszn/cooked/pkg/models"
+	"gorm.io/gorm"
 )
 
-type IpEntry struct {
-	tokens      float64
-	lastChecked time.Time
+type SharedRateLimiter struct {
+	db      *gorm.DB
+	policy  string
+	limit   int
+	window  time.Duration
+	account bool
 }
 
-type RateLimter struct {
-	mu       sync.Mutex
-	visitors map[string]*IpEntry
-	rate     float64
-	burst    int
+func NewSharedRateLimiter(db *gorm.DB, policy string, requestsPerMinute int, account bool) *SharedRateLimiter {
+	return &SharedRateLimiter{db: db, policy: policy, limit: requestsPerMinute, window: time.Minute, account: account}
 }
-
-func NewRateLimiter(requestPerMinute int) *RateLimter {
-	rl := &RateLimter{
-		visitors: make(map[string]*IpEntry),
-		rate:     float64(requestPerMinute) / 60.0,
-		burst:    requestPerMinute,
-	}
-
-	go rl.cleanUp()
-
-	return rl
-
-}
-
-func (rl *RateLimter) cleanUp() {
-	for {
-		time.Sleep(time.Minute * 5)
-		rl.mu.Lock()
-		for ip, entry := range rl.visitors {
-			if ip != "" {
-				if time.Since(entry.lastChecked) > 5*time.Minute {
-					delete(rl.visitors, ip)
-				}
-			}
-		}
-		rl.mu.Unlock()
-	}
-}
-
-func (rl *RateLimter) allow(ip string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	entry, exists := rl.visitors[ip]
-	if !exists {
-		rl.visitors[ip] = &IpEntry{
-			tokens:      float64(rl.burst) - 1,
-			lastChecked: time.Now(),
-		}
-		return true
-	}
-
-	elapsed := time.Since(entry.lastChecked).Seconds()
-	entry.tokens += elapsed * rl.rate
-
-	if entry.tokens > float64(rl.burst) {
-		entry.tokens = float64(rl.burst)
-	}
-	entry.lastChecked = time.Now()
-
-	if entry.tokens < 1 {
-		return false
-	}
-
-	entry.tokens--
-
-	return true
-}
-func (rl *RateLimter) Limit(ctx *gin.Context) {
-	ip := ctx.ClientIP()
-	if !rl.allow(ip) {
-		models.WriteAppError(ctx, apperrors.ErrTooManyRequests)
+func (rl *SharedRateLimiter) Limit(c *gin.Context) {
+	if rl == nil || rl.db == nil || rl.limit < 1 {
+		models.WriteAppError(c, apperrors.ErrServiceUnavailable)
 		return
 	}
+	if !rl.allow(c.Request.Context(), "network", c.ClientIP()) {
+		models.WriteAppError(c, apperrors.ErrTooManyRequests)
+		return
+	}
+	if rl.account {
+		if user, ok := CurrentUserFromContext(c); ok && !rl.allow(c.Request.Context(), "account", user.ID.String()) {
+			models.WriteAppError(c, apperrors.ErrTooManyRequests)
+			return
+		}
+	}
+	c.Next()
+}
+func (rl *SharedRateLimiter) allow(ctx context.Context, kind, key string) bool {
+	now := time.Now().UTC()
+	var count int
+	err := rl.db.WithContext(ctx).Raw(`INSERT INTO rate_limit_buckets(policy,subject_type,subject_key,window_started_at,request_count,expires_at) VALUES (?,?,?,?,1,?) ON CONFLICT(policy,subject_type,subject_key) DO UPDATE SET request_count=CASE WHEN rate_limit_buckets.window_started_at<=? THEN 1 ELSE rate_limit_buckets.request_count+1 END,window_started_at=CASE WHEN rate_limit_buckets.window_started_at<=? THEN ? ELSE rate_limit_buckets.window_started_at END,expires_at=? RETURNING request_count`, rl.policy, kind, key, now, now.Add(rl.window), now.Add(-rl.window), now.Add(-rl.window), now, now.Add(rl.window)).Scan(&count).Error
+	return err == nil && count <= rl.limit
+}
+func (rl *SharedRateLimiter) Cleanup(ctx context.Context) error {
+	return rl.db.WithContext(ctx).Exec("DELETE FROM rate_limit_buckets WHERE expires_at<?", time.Now().UTC()).Error
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// User is an account that authors recipes and may contribute delicacies.
 type User struct {
 	BaseModel
 	Email              string       `gorm:"size:255;not null;uniqueIndex" json:"email"`

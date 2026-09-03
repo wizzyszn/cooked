@@ -18,7 +18,10 @@ type Config struct {
 	Worker        WorkerConfig
 	Cook          CookConfig
 	Engagement    EngagementConfig
+	RateLimits    RateLimitConfig
 }
+
+type RateLimitConfig struct{ Global, Auth, DishSubmission, RecipePublication, CookCompletion, Review, Report, MediaUpload int }
 
 type EngagementConfig struct{ TrendCookWeight, TrendFavoriteWeight, TrendReviewWeight, TrendWindowDays, StreakReminderHour int }
 
@@ -153,6 +156,7 @@ func Load() (*Config, error) {
 		},
 		Cook:       CookConfig{BaseXP: viper.GetInt("COOK_BASE_XP"), PhotoXP: viper.GetInt("COOK_PHOTO_XP"), FirstDishXP: viper.GetInt("COOK_FIRST_DISH_XP"), DailyRewardedSessions: viper.GetInt("COOK_DAILY_REWARDED_SESSIONS")},
 		Engagement: EngagementConfig{TrendCookWeight: viper.GetInt("TREND_COOK_WEIGHT"), TrendFavoriteWeight: viper.GetInt("TREND_FAVORITE_WEIGHT"), TrendReviewWeight: viper.GetInt("TREND_REVIEW_WEIGHT"), TrendWindowDays: viper.GetInt("TREND_WINDOW_DAYS"), StreakReminderHour: viper.GetInt("STREAK_REMINDER_HOUR")},
+		RateLimits: RateLimitConfig{Global: viper.GetInt("RATE_LIMIT_GLOBAL"), Auth: viper.GetInt("RATE_LIMIT_AUTH"), DishSubmission: viper.GetInt("RATE_LIMIT_DISH_SUBMISSION"), RecipePublication: viper.GetInt("RATE_LIMIT_RECIPE_PUBLICATION"), CookCompletion: viper.GetInt("RATE_LIMIT_COOK_COMPLETION"), Review: viper.GetInt("RATE_LIMIT_REVIEW"), Report: viper.GetInt("RATE_LIMIT_REPORT"), MediaUpload: viper.GetInt("RATE_LIMIT_MEDIA_UPLOAD")},
 	}
 	setDefaultConfigs(cfg)
 	err := validateConfigs(cfg)
@@ -243,6 +247,30 @@ func setDefaultConfigs(cfg *Config) {
 	if cfg.Engagement.StreakReminderHour == 0 {
 		cfg.Engagement.StreakReminderHour = 19
 	}
+	if cfg.RateLimits.Global == 0 {
+		cfg.RateLimits.Global = 300
+	}
+	if cfg.RateLimits.Auth == 0 {
+		cfg.RateLimits.Auth = 10
+	}
+	if cfg.RateLimits.DishSubmission == 0 {
+		cfg.RateLimits.DishSubmission = 10
+	}
+	if cfg.RateLimits.RecipePublication == 0 {
+		cfg.RateLimits.RecipePublication = 10
+	}
+	if cfg.RateLimits.CookCompletion == 0 {
+		cfg.RateLimits.CookCompletion = 20
+	}
+	if cfg.RateLimits.Review == 0 {
+		cfg.RateLimits.Review = 10
+	}
+	if cfg.RateLimits.Report == 0 {
+		cfg.RateLimits.Report = 10
+	}
+	if cfg.RateLimits.MediaUpload == 0 {
+		cfg.RateLimits.MediaUpload = 20
+	}
 
 }
 
@@ -274,6 +302,12 @@ func validateConfigs(cfg *Config) error {
 	}
 	if cfg.Engagement.TrendCookWeight < 0 || cfg.Engagement.TrendFavoriteWeight < 0 || cfg.Engagement.TrendReviewWeight < 0 || cfg.Engagement.TrendWindowDays < 1 || cfg.Engagement.StreakReminderHour < 0 || cfg.Engagement.StreakReminderHour > 23 {
 		return fmt.Errorf("engagement configuration is invalid")
+	}
+	limits := []int{cfg.RateLimits.Global, cfg.RateLimits.Auth, cfg.RateLimits.DishSubmission, cfg.RateLimits.RecipePublication, cfg.RateLimits.CookCompletion, cfg.RateLimits.Review, cfg.RateLimits.Report, cfg.RateLimits.MediaUpload}
+	for _, limit := range limits {
+		if limit < 1 {
+			return fmt.Errorf("rate limits must be positive")
+		}
 	}
 	return nil
 }

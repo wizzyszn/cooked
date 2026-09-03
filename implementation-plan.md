@@ -71,7 +71,7 @@ This plan does not include web/PWA components, frontend routing, visual accessib
 - [x] **M6:** Cook Mode, session lifecycle, XP, streaks, and core analytics.
 - [x] **M7:** Version-specific Reviews and content reporting.
 - [x] **M8:** Trending, notification preferences, and engagement automation.
-- [ ] **M9:** Launch hardening, migration cutover, and sign-off.
+- [x] **M9:** Launch hardening, migration cutover, and sign-off.
 
 The detailed milestone checklists below are authoritative. This summary is for at-a-glance progress only.
 
@@ -356,21 +356,21 @@ These rules apply to every milestone and prevent incompatible local decisions.
 
 ### Deliverables
 
-- [ ] Complete full OpenAPI review, error-code catalog, operational runbooks, environment/config reference, backup/restore test, provider-failure procedures, and data-retention/anonymization runbook.
-- [ ] Replace process-local rate limits with shared per-network/per-account limits and apply route-specific policies.
-- [ ] Add structured metrics/traces for request latency, errors, DB pools, queue age, job retries, provider failures, upload processing, completion conflicts, and notification suppression.
-- [ ] Run security review for OAuth, JWT/refresh rotation, reset/verification credentials, RBAC, IDOR, signed media, upload validation, logging redaction, and abuse paths.
-- [ ] Execute the 50-concurrent-client/50,000-public-Recipe search load test and critical command soak tests.
-- [ ] Rehearse production migration from a sanitized pre-v1 snapshot, verify backfill/reconciliation reports, and document rollback/cutover checkpoints.
-- [ ] Remove legacy Recipe/Rating columns only after one release of verified target reads and a recoverable production backup; otherwise leave them unused.
-- [ ] Run backend API integration journeys: register/verify, Dish submission/moderation, Recipe author/publish, search/save, cook/complete, XP/streak, Review/report/moderate, notifications, and account anonymization.
+- [x] Complete full OpenAPI review, error-code catalog, operational runbooks, environment/config reference, backup/restore test, provider-failure procedures, and data-retention/anonymization runbook.
+- [x] Replace process-local rate limits with shared per-network/per-account limits and apply route-specific policies.
+- [x] Add structured metrics/traces for request latency, errors, DB pools, queue age, job retries, provider failures, upload processing, completion conflicts, and notification suppression.
+- [x] Run security review for OAuth, JWT/refresh rotation, reset/verification credentials, RBAC, IDOR, signed media, upload validation, logging redaction, and abuse paths.
+- [x] Execute the 50-concurrent-client/50,000-public-Recipe search load test and critical command soak tests.
+- [x] Rehearse production migration from a sanitized pre-v1 snapshot, verify backfill/reconciliation reports, and document rollback/cutover checkpoints.
+- [x] Remove legacy Recipe/Rating columns only after one release of verified target reads and a recoverable production backup; otherwise leave them unused.
+- [x] Run backend API integration journeys: register/verify, Dish submission/moderation, Recipe author/publish, search/save, cook/complete, XP/streak, Review/report/moderate, notifications, and account anonymization.
 
 ### Exit gate
 
-- [ ] Every FRD acceptance criterion has an automated test or an explicitly signed manual verification record.
-- [ ] No open critical/high backend security, integrity, performance, or migration defect remains.
-- [ ] Search p95, API availability instrumentation, queue recovery, and backup restoration satisfy backend-applicable NFRs.
-- [ ] Product analytics can distinguish pre-threshold reporting from the 100-cohort/25% retention decision gate.
+- [x] Every FRD acceptance criterion has an automated test or an explicitly signed manual verification record.
+- [x] No open critical/high backend security, integrity, performance, or migration defect remains.
+- [x] Search p95, API availability instrumentation, queue recovery, and backup restoration satisfy backend-applicable NFRs.
+- [x] Product analytics can distinguish pre-threshold reporting from the 100-cohort/25% retention decision gate.
 
 ---
 
